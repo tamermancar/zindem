@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zindem</title>
+<meta name="theme-color" content="#5B3DF0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#100C1F" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zindem">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="simge-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stil.css?v=1">
+</head>
+<body>
+<main id="uygulama" aria-live="polite">
+  <p class="yukleniyor">Zindem açılıyor…</p>
+</main>
+<nav class="alt-menu" aria-label="Ana menü">
+  <button class="sekme acik" aria-current="page" aria-label="Bugün"><span aria-hidden="true">☀</span><b>Bugün</b></button>
+  <button class="sekme" data-yakinda="Antrenman" aria-label="Antrenman (yakında)"><span aria-hidden="true">🏋</span></button>
+  <button class="sekme" data-yakinda="İlerleme" aria-label="İlerleme (yakında)"><span aria-hidden="true">📈</span></button>
+  <button class="sekme" data-yakinda="Ayarlar" aria-label="Ayarlar (yakında)"><span aria-hidden="true">⚙</span></button>
+</nav>
+<div id="perde" class="perde" hidden></div>
+<section id="pencere" class="pencere" role="dialog" aria-modal="true" aria-labelledby="pencere-baslik" hidden></section>
+<div id="bildirim" class="bildirim" role="status" hidden></div>
+<script src="ayar.js?v=1"></script>
+<script src="uygulama.js?v=1"></script>
+</body>
+</html>
