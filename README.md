@@ -11,3 +11,7 @@ Telefonda çalışan kişisel sağlık takip uygulaması: yemek, kalori ve prote
 - U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, SR Legacy (2018). fdc.nal.usda.gov — kamu malı (CC0 1.0).
 - Türkiye'ye özgü ürünler: piyasadaki ürün etiketlerinin ortalaması, markasız.
 - Değerler 100 g içindir. Ölçüler: su bardağı 200 ml, çay bardağı 100 ml, yemek kaşığı 15 ml, tatlı kaşığı 5 ml, çay kaşığı 2,5 ml (silme).
+
+## Simgeler
+
+- [Phosphor Icons](https://phosphoricons.com) (duotone), MIT Lisansı — Copyright (c) 2023 Phosphor Icons. Simgeler index.html içine gömülüdür.

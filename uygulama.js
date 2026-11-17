@@ -153,7 +153,7 @@
         (c.sonuc || []).forEach(function (s) { tamam[s.id] = 1; if (!s.ok) hatali.push(s.hata); });
         bekleyenYaz(bekleyenler().filter(function (x) { return !tamam[x.islemId]; }));
         if (hatali.length) bildir('⚠ Bir kayıt yazılamadı: ' + hatali[0]);
-        S.gonderiliyor = false; durumGoster();
+        S.gonderiliyor = false; S.kaydedildi = Date.now(); durumGoster();
         if (bekleyenler().length) gonder();
       })
       .catch(function () { S.gonderiliyor = false; durumGoster(); });
@@ -265,8 +265,13 @@
     var n = bekleyenler().length;
     if (S.gonderiliyor) { el.className = 'durum'; el.textContent = '⏳ Kaydediliyor…'; }
     else if (n) { el.className = 'durum bekliyor'; el.textContent = '🟠 ' + n + ' kayıt bekliyor'; }
-    else { el.className = 'durum'; el.textContent = '✅ Kaydedildi'; }
+    else if (Date.now() - (S.kaydedildi || 0) < 3000) {
+      el.className = 'durum'; el.textContent = '✅ Kaydedildi';
+      clearTimeout(durumZaman);
+      durumZaman = setTimeout(function () { var e = $('#durum'); if (e) e.className = 'durum gizle'; }, 3000 - (Date.now() - S.kaydedildi));
+    } else { el.className = 'durum gizle'; el.textContent = '✅ Kaydedildi'; }
   }
+  var durumZaman = null;
 
   function ciz() {
     var ana = $('#uygulama');
@@ -275,15 +280,16 @@
     if (!S.yuklendi) {
       ana.innerHTML = S.hata
         ? '<div class="kart"><b>❌ Bağlantı kurulamadı.</b><p>İnternet bağlantını kontrol et.</p><button class="ana-dugme" id="tekrar">Tekrar dene</button></div>'
-        : '<p class="yukleniyor">Zindem açılıyor…</p>';
+        : '';
       var t = $('#tekrar'); if (t) t.onclick = baslat;
+      if (S.hata) acilisKapat();
       return;
     }
     var hk = hedef('kalori'), hp = hedef('protein'), hs = hedef('su_ml');
     var t = toplamlar(S.kayitlar), su = S.gunluk.su || 0;
     var h = '';
     h += '<header class="ust-satir"><div class="selam"><h1>' + selam() + '</h1><div class="tarih">' + gunBasligi() + '</div><div id="durum" class="durum"></div></div>' +
-      '<button class="yuvarlak-dugme" id="agri-dugme" aria-label="Ağrı ve sağlık notu' + (S.agri.length ? ' (' + S.agri.length + ' açık not)' : '') + '">🩹' + (S.agri.length ? '<span class="nokta" aria-hidden="true"></span>' : '') + '</button></header>';
+      '<button class="yuvarlak-dugme" id="agri-dugme" aria-label="Ağrı ve sağlık notu' + (S.agri.length ? ' (' + S.agri.length + ' açık not)' : '') + '"><svg class="ikon" style="--r:#F9A8D4" aria-hidden="true"><use href="#i-agri"/></svg>' + (S.agri.length ? '<span class="nokta" aria-hidden="true"></span>' : '') + '</button></header>';
 
     // Üst kart
     h += '<section class="ust-kart" aria-label="Günün toplamı"><div class="halkalar">' +
@@ -320,12 +326,12 @@
       if (!ar[i].acik) return;
       var liste = S.kayitlar.filter(function (k) { return k['Öğün'] === o.ad; });
       var tt = toplamlar(liste);
-      var sinif = liste.length ? 'bitti' : (i > simdiIdx ? 'gelecek' : '');
+      var sinif = liste.length ? 'dolu' : (i > simdiIdx ? 'gelecek' : '');
       if (o.k === simdiOgun) sinif += ' simdi';
       if (o.k === S.seciliOgun) sinif += ' secili';
       var bas = String(ayar(o.k, VARSAYILAN_SAAT[o.k])).split('-')[0];
-      h += '<button class="ogun-cip ' + sinif + '" data-ogun="' + o.k + '" aria-pressed="' + (o.k === S.seciliOgun) + '" aria-label="' + o.ad + (liste.length ? ', ' + bicim(tt.kcal) + ' kcal' : '') + '">' +
-        '<span class="top" aria-hidden="true">' + (liste.length && o.k !== simdiOgun ? '✓' : o.simge) + '</span><span class="ad">' + o.ad + '</span>' +
+      h += '<button class="ogun-cip ' + sinif + '" data-ogun="' + o.k + '" aria-pressed="' + (o.k === S.seciliOgun) + '" aria-label="' + o.ad + (o.k === simdiOgun ? ' (şimdi)' : '') + (liste.length ? ', ' + bicim(tt.kcal) + ' kcal' : '') + '">' +
+        '<span class="top" aria-hidden="true">' + o.simge + '</span><span class="ad">' + o.ad + (o.k === simdiOgun ? '<i class="simdi-nokta" title="Şimdi"></i>' : '') + '</span>' +
         '<span class="alt">' + (liste.length ? bicim(tt.kcal) + ' kcal' : (i > simdiIdx ? bas : '—')) + '</span></button>';
     });
     h += '</nav>';
@@ -336,6 +342,12 @@
     ana.innerHTML = h;
     durumGoster();
     baglaAna();
+    acilisKapat();
+  }
+  function acilisKapat() {
+    var a = $('#acilis'); if (!a || a.classList.contains('kapaniyor')) return;
+    a.classList.add('kapaniyor');
+    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 400);
   }
 
   function soruKarti() {
@@ -359,7 +371,7 @@
     var ad = ogunAdi(ogunK);
     var liste = S.kayitlar.filter(function (k) { return k['Öğün'] === ad; });
     var tt = toplamlar(liste);
-    var h = '<section class="kart ogun-kutu" aria-labelledby="ogun-baslik"><div class="ogun-baslik"><h2 id="ogun-baslik">' + ad +
+    var h = '<section class="kart ogun-kutu ' + (S.gecis || '') + '" aria-labelledby="ogun-baslik"><div class="ogun-baslik"><h2 id="ogun-baslik">' + ad +
       '<span class="toplam">' + (liste.length ? bicim(tt.kcal) + ' kcal · ' + bicim(tt.p) + ' g protein' : 'Henüz kayıt yok') + '</span></h2>' +
       '<button class="ekle-dugme" id="ekle">＋ Ekle</button></div>';
     liste.forEach(function (k) {
@@ -403,7 +415,15 @@
 
   function baglaAna() {
     document.querySelectorAll('[data-su]').forEach(function (b) { b.onclick = function () { suDegistir(+b.getAttribute('data-su')); }; });
-    document.querySelectorAll('[data-ogun]').forEach(function (b) { b.onclick = function () { S.seciliOgun = b.getAttribute('data-ogun'); ciz(); }; });
+    document.querySelectorAll('[data-ogun]').forEach(function (b) {
+      b.onclick = function () {
+        var yeni = b.getAttribute('data-ogun'); if (yeni === S.seciliOgun) return;
+        var sira = OGUNLER.map(function (o) { return o.k; });
+        S.gecis = sira.indexOf(yeni) > sira.indexOf(S.seciliOgun) ? 'gecis-sag' : 'gecis-sol';
+        S.seciliOgun = yeni; ciz(); S.gecis = '';
+        if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* yok */ }
+      };
+    });
     document.querySelectorAll('[data-artir]').forEach(function (b) {
       b.onclick = function () { var k = kayitBul(b.getAttribute('data-artir')); kayitMiktar(k['ID'], sayi(k['Miktar']) + adimMiktar(k)); };
     });
@@ -418,7 +438,7 @@
       };
     });
     document.querySelectorAll('[data-hizli]').forEach(function (b) {
-      b.onclick = function () { var be = S.besinler[b.getAttribute('data-hizli')]; var o = sonOlcu(be); kayitEkle(be, o.olcu, o.miktar, S.seciliOgun); };
+      b.onclick = function () { var be = S.besinler[b.getAttribute('data-hizli')]; var o = sonOlcu(be); kayitEkle(be, o.olcu, o.miktar, S.seciliOgun || ogunBul(Date.now())); };
     });
     document.querySelectorAll('[data-uyku]').forEach(function (b) {
       b.onclick = function () { S.gunluk.uyku = b.getAttribute('data-uyku'); islemEkle('gunluk', { gun: S.gun, alan: 'uyku', deger: S.gunluk.uyku }); ciz(); bildir('✅ Uyku kaydedildi'); };
@@ -430,7 +450,7 @@
       if (!isFinite(v) || v < 0) { bildir('Adım sayısını yaz'); return; }
       S.gunluk.adim = String(v); islemEkle('gunluk', { gun: S.gun, alan: 'adim', deger: v }); ciz(); bildir('✅ Adım kaydedildi');
     };
-    $('#ekle').onclick = function () { ekleAc(); };
+    $('#ekle').onclick = function () { ekleAc(S.seciliOgun); };
     $('#agri-dugme').onclick = function () { agriAc(); };
   }
 
@@ -454,8 +474,10 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#pencere').hidden) pencereKapat(); });
 
   /* ---------- ＋ Ekle ---------- */
-  function ekleAc() {
-    pencereAc(YONELME[S.seciliOgun] + ' ekle',
+  var penOgun = '';
+  function ekleAc(ogunK) {
+    penOgun = ogunK || S.seciliOgun || ogunBul(Date.now());
+    pencereAc(YONELME[penOgun] + ' ekle',
       '<label class="gizli-yazi" for="arama">Besin ara</label><input id="arama" class="arama" type="search" placeholder="Besin ara: yoğurt, tavuk, elma…" autocomplete="off"><div id="sonuclar"></div>',
       function () {
         var a = $('#arama');
@@ -509,7 +531,7 @@
         h += '<div class="form-alan"><span class="etiket-yazi">Miktar</span><div class="adim"><button id="m-az" aria-label="Azalt">−</button><span>' + bicim(sec.miktar, 2) + '</span><button id="m-art" aria-label="Artır">＋</button></div></div>';
       }
       h += '<div class="ozet-kutu" aria-live="polite">' + bicim(d.kcal) + ' kcal · ' + bicim(d.p, 1) + ' g protein' + (d.gram !== '' && sec.olcu !== 'gram' ? ' · ' + bicim(d.gram) + ' g' : '') + '</div>' +
-        '<button class="ana-dugme" id="ekle-onay">' + YONELME[S.seciliOgun] + ' ekle</button><button class="ikinci-dugme" id="geri">← Aramaya dön</button>';
+        '<button class="ana-dugme" id="ekle-onay">' + YONELME[penOgun] + ' ekle</button><button class="ikinci-dugme" id="geri">← Aramaya dön</button>';
       pencereIcerik('<h3 style="margin:8px 0 0">' + esc(b.ad) + '</h3>' + h, function () {
         document.querySelectorAll('[data-olcu]').forEach(function (x) {
           x.onclick = function () { sec.olcu = x.getAttribute('data-olcu'); sec.miktar = sec.olcu === 'gram' ? 100 : 1; ciz2(); };
@@ -520,9 +542,9 @@
         if (gk) gk.onchange = function () { var v = sayi(gk.value); if (isFinite(v) && v > 0) { sec.miktar = v; ciz2(); } };
         $('#ekle-onay').onclick = function () {
           if (gk) { var v = sayi(gk.value); if (!isFinite(v) || v <= 0) { bildir('Gramı yaz'); return; } sec.miktar = v; }
-          kayitEkle(b, sec.olcu, sec.miktar, S.seciliOgun); pencereKapat(); bildir('✅ ' + b.ad + ' eklendi');
+          kayitEkle(b, sec.olcu, sec.miktar, penOgun); pencereKapat(); bildir('✅ ' + b.ad + ' eklendi');
         };
-        $('#geri').onclick = function () { ekleAc(); };
+        $('#geri').onclick = function () { ekleAc(penOgun); };
       });
     }
     ciz2();
@@ -545,11 +567,10 @@
           $('#e-olcu-alan').hidden = temel !== '100 g';
         };
       });
-      $('#geri').onclick = function () { ekleAc(); };
+      $('#geri').onclick = function () { ekleAc(penOgun); };
       $('#e-kaydet').onclick = function () {
         var ad = $('#e-ad').value.trim(), kcal = sayi($('#e-kcal').value), p = sayi($('#e-p').value);
-        if (!ad || !isFinite(kcal)) { bildir('Ad ve kalori gerekli'); return; }
-        if (!isFinite(p)) p = 0;
+        if (!ad || !isFinite(kcal) || !isFinite(p)) { bildir('Ad, kalori ve protein gerekli (etikette protein yoksa 0 yaz)'); return; }
         var olcuAd = $('#e-olcu').value.trim(), olcuG = sayi($('#e-gram').value);
         var olculer = temel === '100 g' && olcuAd && isFinite(olcuG) && olcuG > 0 ? olcuAd + '=' + olcuG : '';
         var v = { id: kimlik('B'), ad: ad, kategori: $('#e-kat').value, temel: temel, kcal: kcal, p: p, olculer: olculer };
@@ -653,6 +674,7 @@
 
   /* ---------- Anahtar ekranı ---------- */
   function anahtarEkrani(ana, yanlis) {
+    acilisKapat();
     ana.innerHTML = '<section class="kart"><h1 style="margin-top:0">Zindem</h1>' +
       (yanlis ? '<p class="uyari">⚠ Anahtar kabul edilmedi. Apps Script › Proje Ayarları › Komut dosyası özellikleri › ANAHTAR değerini kontrol et.</p>' : '') +
       '<p>Gizli anahtarını yapıştır. Anahtar bu adresin sonuna eklenir; ana ekran kısayolunu bundan sonra oluştur.</p>' +
@@ -696,7 +718,8 @@
     if (document.visibilityState !== 'visible' || !S.anahtar) return;
     // Gün değiştiyse ya da 5 dakikadan uzun süre arka plandaysa yeniden yükle
     if (gunBul(Date.now()) !== S.gun || Date.now() - S.sonYukleme > 300000) {
-      S.seciliOgun = ''; yukle().then(function () { if ($('#pencere').hidden) ciz(); gonder(); });
+      if (gunBul(Date.now()) !== S.gun) S.seciliOgun = ogunBul(Date.now());
+      yukle().then(function () { if ($('#pencere').hidden) ciz(); gonder(); });
     } else gonder();
   });
   baslat();
