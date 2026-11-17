@@ -14,4 +14,4 @@ Telefonda çalışan kişisel sağlık takip uygulaması: yemek, kalori ve prote
 
 ## Simgeler
 
-- [Phosphor Icons](https://phosphoricons.com) (duotone), MIT Lisansı — Copyright (c) 2023 Phosphor Icons. Simgeler index.html içine gömülüdür.
+- [Tabler Icons](https://tabler.io/icons), MIT Lisansı — Copyright (c) 2020-2026 Paweł Kuna. Kullanılan simgeler index.html içine gömülüdür.
