@@ -45,8 +45,14 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .ust-satir .tarih { color: var(--soluk); font-size: 14px; }
 .durum { font-size: 13px; color: var(--soluk); margin-top: 2px; }
 .durum.bekliyor { color: var(--dikkat); }
-.durum { transition: opacity .4s ease; min-height: 18px; }
-.durum.gizle { opacity: 0; }
+/* Kayıt durumu simgesi (tarihin yanında) */
+.ust-satir .tarih { display: flex; align-items: center; gap: 6px; min-height: 28px; }
+.senk { width: 28px; height: 28px; border: 0; background: transparent; padding: 2px; color: var(--soluk); display: inline-flex; align-items: center; justify-content: center; }
+.senk svg { width: 22px; height: 22px; overflow: visible; }
+.senk.tamam { color: var(--tamam); animation: belir .25s ease-out; }
+.senk.uyari { color: var(--dikkat); }
+.senk .ok { animation: ksYuk 1s ease-in-out infinite; }
+@keyframes ksYuk { 0% { transform: translateY(3px); opacity: 0; } 35% { opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(-3px); opacity: 0; } }
 .yuvarlak-dugme {
   width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--kart);
   box-shadow: var(--golge); position: relative; font-size: 22px; flex: none;
@@ -71,8 +77,8 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .halka .iz { stroke: rgba(255, 255, 255, .22); }
 .halka .dolu { transition: stroke-dashoffset .5s ease; }
 .halka .ic { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.halka .ic b { font-size: 24px; font-weight: 800; line-height: 1; }
-.halka .ic small { font-size: 12px; font-weight: 600; margin-top: 3px; }
+.halka .ic b { font-size: 22px; letter-spacing: -.02em; font-weight: 800; line-height: 1; white-space: nowrap; }
+.halka .ic small { font-size: 13px; font-weight: 600; margin-top: 3px; }
 .halka-ad { font-size: 13px; font-weight: 700; text-align: center; }
 .cubuk-dugme {
   border: 0; background: rgba(255, 255, 255, .14); color: #fff; border-radius: 16px; padding: 8px 10px 10px; min-height: 72px;
@@ -139,10 +145,9 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
   display: flex; align-items: center; justify-content: center;
 }
 .adim button .ikon { width: 18px; height: 18px; }
-.adim-deger { min-width: 56px; text-align: center; display: flex; flex-direction: column; line-height: 1.15; }
-.adim-deger b { font-size: 15px; font-weight: 800; }
-.adim-deger small { font-size: 12px; font-weight: 600; color: var(--soluk); }
-.adim-deger.tek { padding: 0 8px; }
+.adim { width: 144px; justify-content: space-between; }
+.adim-deger { flex: 1; text-align: center; }
+.adim-deger b { font-size: 16px; font-weight: 800; white-space: nowrap; }
 .bos { color: var(--soluk); padding: 14px 16px; border-top: 1px solid var(--cizgi); font-size: 14px; }
 
 /* Alt menü (ekrana yapışık) */
@@ -157,7 +162,8 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 }
 .sekme.acik { flex: 1.5; flex-direction: row; gap: 8px; background: var(--renk); color: #100C1F; font-size: 15px; }
 .sekme b { font-weight: 800; }
-.yuvarlak-dugme .ikon { color: var(--adim-ikon); }
+.yuvarlak-dugme .ikon { color: var(--adim-ikon); display: block; }
+.yuvarlak-dugme { padding: 0; line-height: 0; display: flex; align-items: center; justify-content: center; }
 
 /* Alttan açılan pencere */
 .perde { position: fixed; inset: 0; background: rgba(16, 12, 31, .5); z-index: 30; animation: belir .2s ease-out; }
@@ -280,3 +286,13 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .sepet-toplam { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; font-size: 15px; }
 .ikinci-dugme { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .ikinci-dugme .ikon { width: 18px; height: 18px; }
+
+/* Ağrı notu: kartta sürgü */
+.takip { margin-top: 12px; }
+.takip .etiket-yazi { display: block; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.takip .etiket-yazi small { font-weight: 600; color: var(--soluk); }
+.siddet .cip { width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.siddet .cip .ikon { width: 18px; height: 18px; }
+.takip-alt { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.takip-cevap { flex: 1; font-size: 14px; font-weight: 700; color: var(--soluk); }
+.takip-alt .metin-dugme { margin-left: 0; }
