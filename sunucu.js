@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.3.0';
+var SUNUCU_SURUM = '1.4.0';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -131,12 +131,23 @@ function hucreYaz_(ad, satir, sutun, deger) {
   c.setValue(deger_(deger));
 }
 
-/* ---------- Okuma ---------- */
+/* ---------- Okuma ----------
+ * p.gun: ekranda açılacak gün · p.bas / p.bitis: bu aralıktaki bütün günler tek seferde gelir (1.3.1)
+ * p.sade = '1': sadece gün verileri (eski bir aya geçerken) */
 function sunucuOku(p) {
   semaGuncelle_();
-  var gun = p.gun || '';
+  var gun = p.gun || '', bas = p.bas || gun, bitis = p.bitis || gun;
+  if (bas > bitis) { var t = bas; bas = bitis; bitis = t; }
   var ogunler = oku_('Öğün Kayıtları');
   var gunluk = oku_('Günlük');
+
+  // Aralıktaki günlerin kayıtları
+  var gunVeri = {};
+  function gv(g) { return gunVeri[g] || (gunVeri[g] = { kayitlar: [], gunluk: null }); }
+  ogunler.forEach(function (o) { var g = String(o['Gün']); if (g >= bas && g <= bitis) gv(g).kayitlar.push(o); });
+  gunluk.forEach(function (x) { var g = String(x['Gün']); if (g >= bas && g <= bitis) gv(g).gunluk = x; });
+  var oncekiBas = oncekiOgun_(ogunler, bas);
+  if (p.sade === '1') return { ok: true, surum: SUNUCU_SURUM, bas: bas, bitis: bitis, gunVeri: gunVeri, oncekiBas: oncekiBas };
 
   // Son yenenler (en yeni 40 farklı besin)
   var son = [], gorulen = {};
@@ -147,7 +158,7 @@ function sunucuOku(p) {
     son.push({ besinId: o['Besin ID'], ad: o['Ad'], olcu: o['Ölçü'], miktar: o['Miktar'], ogun: o['Öğün'] });
   }
   // Öğün başına seçilme sayıları (son 90 gün)
-  var sinir = gunEkle_(gun || bugun_(), -90), sayim = {};
+  var sinir = gunEkle_(bitis || bugun_(), -90), sayim = {};
   ogunler.forEach(function (o) {
     if (!o['Besin ID'] || String(o['Gün']) < sinir) return;
     var k = o['Öğün'] + '|' + o['Besin ID'];
@@ -157,14 +168,6 @@ function sunucuOku(p) {
   var gunSet = {};
   ogunler.forEach(function (o) { if (o['Gün']) gunSet[o['Gün']] = 1; });
   gunluk.forEach(function (g) { if (g['Gün'] && (g['Su (ml)'] || g['Adım'] || g['Uyku'])) gunSet[g['Gün']] = 1; });
-  // Her öğün için, bakılan günden önceki son kayıtlı gün ("Dünkü kahvaltıyı ekle")
-  var onceki = {};
-  for (var j = ogunler.length - 1; j >= 0; j--) {
-    var x = ogunler[j], ad = x['Öğün'], g = String(x['Gün']);
-    if (!ad || !g || g >= gun || !x['Besin ID']) continue;
-    if (!onceki[ad]) onceki[ad] = { gun: g, kayitlar: [] };
-    if (onceki[ad].gun === g) onceki[ad].kayitlar.unshift({ besinId: x['Besin ID'], ad: x['Ad'], miktar: x['Miktar'], olcu: x['Ölçü'] });
-  }
   var sonTakip = {};
   oku_('Ağrı Takibi').forEach(function (t) { sonTakip[t['Not ID']] = t; }); // en son satır kalır
   var agri = oku_('Ağrı Notları').filter(function (a) { return a['Durum'] !== 'geçti'; }).map(function (a) {
@@ -184,8 +187,21 @@ function sunucuOku(p) {
     sonYenenler: son,
     sikYenenler: sayim,
     gunler: Object.keys(gunSet).sort(),
-    oncekiOgun: onceki
+    oncekiOgun: oncekiOgun_(ogunler, gun),
+    bas: bas, bitis: bitis, gunVeri: gunVeri, oncekiBas: oncekiBas
   };
+}
+/* Her öğün için, verilen günden önceki son kayıtlı gün ("Dünkü kahvaltıyı ekle") */
+function oncekiOgun_(ogunler, gun) {
+  var onceki = {};
+  for (var j = ogunler.length - 1; j >= 0; j--) {
+    var x = ogunler[j], ad = x['Öğün'], g = String(x['Gün']);
+    if (!ad || !g || g >= gun || !x['Besin ID']) continue;
+    if (onceki[ad] && onceki[ad].gun > g) continue;
+    if (!onceki[ad] || onceki[ad].gun < g) onceki[ad] = { gun: g, kayitlar: [] };
+    onceki[ad].kayitlar.unshift({ besinId: x['Besin ID'], ad: x['Ad'], miktar: x['Miktar'], olcu: x['Ölçü'] });
+  }
+  return onceki;
 }
 function bugun_() { return Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd'); }
 function gunEkle_(gun, n) {
