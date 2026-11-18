@@ -173,11 +173,11 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 
 /* Açılış ekranı */
 .acilis {
-  position: fixed; inset: 0; z-index: 50; background: var(--degrade); color: #fff;
+  position: fixed; inset: 0; z-index: 50; background: #5B3DF0; color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   transition: opacity .35s ease;
 }
-.acilis img { border-radius: 28px; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
+.acilis img { border-radius: 50%; width: 128px; height: 128px; }
 .acilis b { font-size: 28px; font-weight: 800; letter-spacing: .02em; }
 .acilis-cubuk { width: 64px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .25); overflow: hidden; position: relative; }
 .acilis-cubuk::after { content: ''; position: absolute; inset: 0; width: 40%; background: #fff; border-radius: 2px; animation: cubuk 1s ease-in-out infinite; }
@@ -294,5 +294,23 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .siddet .cip { width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
 .siddet .cip .ikon { width: 18px; height: 18px; }
 .takip-alt { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.takip-cevap { flex: 1; font-size: 14px; font-weight: 700; color: var(--soluk); }
+.takip-alt { justify-content: flex-end; }
 .takip-alt .metin-dugme { margin-left: 0; }
+.kademe { margin-top: 8px; border-radius: 12px; padding: 8px 12px; font-size: 14px; font-weight: 700; background: var(--yumusak); color: var(--yumusak-yazi); }
+.kademe.normal { background: var(--tamam-zemin); color: var(--tamam); }
+.kademe.dikkat, .kademe.ara, .kademe.doktor { background: var(--dikkat-zemin); color: var(--dikkat); }
+.kademe.doktor { box-shadow: inset 0 0 0 2px var(--dikkat); }
+
+/* Geçmiş öğünler şeridi */
+.gecmis-serit { display: flex; gap: 8px; }
+.gecmis-serit .gecmis-cip { flex: 1; }
+.gecmis-cip {
+  border: 0; background: var(--kart); box-shadow: var(--golge); border-radius: 18px; min-height: 60px; padding: 8px 8px 8px 10px;
+  display: flex; align-items: center; gap: 8px; text-align: left; color: var(--yazi); min-width: 0;
+}
+.gecmis-cip .ikon { width: 22px; height: 22px; color: var(--yumusak-yazi); }
+.gecmis-cip span { display: flex; flex-direction: column; min-width: 0; }
+.gecmis-cip b { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gecmis-cip small { font-size: 12px; font-weight: 600; color: var(--soluk); white-space: nowrap; }
+.gecmis-cip.acik { box-shadow: 0 0 0 2px var(--ana); }
+.ogun-kart.seritten { animation: acil .24s ease-out; }
