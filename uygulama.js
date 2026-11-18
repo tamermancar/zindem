@@ -17,7 +17,7 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.4.1';
+  var SUNUCU_SURUM = '1.4.2';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -871,28 +871,81 @@
     }
     h += '<button class="ikinci-dugme" id="elle">' + ik('pencil') + ' Listede yok mu? Elle ekle</button><div class="sepet-bosluk"></div>';
     $('#sonuclar').innerHTML = h;
-    document.querySelectorAll('[data-sec]').forEach(function (b) {
+    document.querySelectorAll('#sonuclar [data-sec]').forEach(function (b) {
       b.onclick = function () {
         var be = S.besinler[b.getAttribute('data-sec')];
-        if (sepetteKac(be.id)) { sepetAc(); return; }
+        if (sepetIndex(be.id) >= 0) return;
         var o = sonOlcu(be);
         S.sepet.push({ besin: be, olcu: o.olcu, miktar: o.miktar });
-        titret(); sonuclariGoster($('#arama').value); sepetCubugu();
+        titret(); sofraYenile = listeYenile; listeYenile(be.id);
       };
     });
+    sofraYenile = listeYenile;
     $('#elle').onclick = function () { elleEkle(q); };
+  }
+  // Listede sadece değişen besinin satırı yenilenir; biri sofradan çıkınca (sıra numaraları kaydığı için) liste baştan çizilir, kaydırma yeri korunur
+  function listeYenile(id, silindi) {
+    var p = $('#pencere'), y = p.scrollTop;
+    if (silindi) sonuclariGoster($('#arama').value);
+    else document.querySelectorAll('#sonuclar .sofra-kutu[data-besin="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]').forEach(function (k) {
+      var b = S.besinler[id], tmp = document.createElement('div'); tmp.innerHTML = sonucSatiri(b);
+      var yeni = tmp.firstChild; k.parentNode.replaceChild(yeni, k);
+      yeni.querySelectorAll('[data-sec]').forEach(function (d) { d.onclick = function () { var o = sonOlcu(b); S.sepet.push({ besin: b, olcu: o.olcu, miktar: o.miktar }); titret(); listeYenile(b.id); }; });
+    });
+    p.scrollTop = y; sepetCubugu();
   }
   function sepetteKac(id) { var n = 0; S.sepet.forEach(function (x) { if (x.besin.id === id) n += 1; }); return n; }
   function sepetToplam() {
     return S.sepet.reduce(function (t, x) { var d = deger(x.besin, x.olcu, x.miktar); t.kcal += d.kcal; t.p += d.p; return t; }, { kcal: 0, p: 0 });
   }
+  function sepetIndex(id) { for (var i = 0; i < S.sepet.length; i++) if (S.sepet[i].besin.id === id) return i; return -1; }
+  // Listedeki satır: sofrada değilse + düğmesi; sofradaysa ad · miktar ▾ · değerler ve artı/eksi (1.4.2)
   function sonucSatiri(b) {
-    var o = sonOlcu(b), d = deger(b, o.olcu, o.miktar), n = sepetteKac(b.id);
+    var i = sepetIndex(b.id);
+    if (i >= 0) return sofraKutusu(S.sepet[i], i, 'sonuc sofrada');
+    var o = sonOlcu(b), d = deger(b, o.olcu, o.miktar);
     var alt = miktarYaz(o.miktar) + ' ' + esc(birimAdi(o.olcu)) + ' · ' + bicim(d.kcal) + ' kcal · ' + (b.pYok ? '<span class="uyari-yazi">⚠ protein ?</span>' : bicim(d.p, 1) + ' g');
-    return '<div class="sonuc"><span class="bilgi"><b>' + esc(b.ad) + (b.benim ? ' <span class="etiket">Benim</span>' : '') + '</b><small>' + alt + '</small></span>' +
-      (n ? '<button class="sepet-ekle var" data-sec="' + esc(b.id) + '" aria-label="' + esc(b.ad) + ': sofrada, düzenle">' + ik('check') + '</button>'
-         : '<button class="sepet-ekle" data-sec="' + esc(b.id) + '" aria-label="' + esc(b.ad) + ' sofraya ekle">' + ik('plus') + '</button>') + '</div>';
+    return '<div class="sofra-kutu" data-besin="' + esc(b.id) + '"><div class="sonuc"><span class="bilgi"><b>' + esc(b.ad) + (b.benim ? ' <span class="etiket">Benim</span>' : '') + '</b><small>' + alt + '</small></span>' +
+      '<button class="sepet-ekle" data-sec="' + esc(b.id) + '" aria-label="' + esc(b.ad) + ' sofraya ekle">' + ik('plus') + '</button></div></div>';
   }
+  // Sofradaki bir besin: hem listede hem Sofra sayfasında aynı görünüm
+  function sofraKutusu(x, i, sinif) {
+    var d = deger(x.besin, x.olcu, x.miktar), anahtar = 's:' + i, acik = S.olcuAcik === anahtar;
+    var miktar = x.besin.porsiyon ? '<small>' + esc(miktarMetni(x.miktar, x.olcu)) + '</small>'
+      : '<button class="miktar-dugme" data-olcu-ac="' + anahtar + '" aria-expanded="' + acik + '" aria-label="Ölçü: ' + esc(miktarMetni(x.miktar, x.olcu)) + '. Dokun: ölçüyü değiştir">' + esc(miktarMetni(x.miktar, x.olcu)) + ik(acik ? 'chevron-up' : 'chevron-down') + '</button>';
+    var h = '<div class="sofra-kutu" data-besin="' + esc(x.besin.id) + '"><div class="' + sinif + '"><div class="bilgi"><b>' + esc(x.besin.ad) + (x.besin.benim ? ' <span class="etiket">Benim</span>' : '') + '</b>' + miktar +
+      '<small>' + bicim(d.kcal) + ' kcal · ' + (x.besin.pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(d.p, 1) + ' g protein') + '</small></div>' +
+      adimSatiri(anahtar, x.besin.ad, x.miktar, x.olcu, miktarAdimi(x.besin, x.olcu)) + '</div>';
+    if (acik) h += '<div class="cipler olcu-secim" role="group" aria-label="Ölçü seç">' + olcuSecenekleri(x.besin).map(function (o) {
+      return '<button class="cip' + (o === x.olcu ? ' secili' : '') + '" aria-pressed="' + (o === x.olcu) + '" data-olcu-sec="' + anahtar + '" data-olcu="' + esc(o) + '">' + esc(o === 'gram' ? 'gram' : birimAdi(o)) + '</button>';
+    }).join('') + (x.olcu === 'gram' ? '<span class="ipucu">artış ' + miktarAdimi(x.besin, 'gram') + ' g</span>' : '') + '</div>';
+    return h + '</div>';
+  }
+  /* Sofradaki besinlerin artı/eksi ve ölçü düğmeleri tek yerden yönetilir (pencere içinde, liste ve Sofra sayfası için ortak) */
+  var sofraYenile = null;
+  S.olcuAcik = '';
+  $('#pencere').addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-art^="s:"],[data-az^="s:"],[data-olcu-ac^="s:"],[data-olcu-sec^="s:"]');
+    if (!b) return;
+    var anahtar = b.getAttribute('data-art') || b.getAttribute('data-az') || b.getAttribute('data-olcu-ac') || b.getAttribute('data-olcu-sec');
+    var i = +anahtar.slice(2), x = S.sepet[i]; if (!x) return;
+    var id = x.besin.id, silindi = false;
+    if (b.hasAttribute('data-art') || b.hasAttribute('data-az')) {
+      var a = miktarAdimi(x.besin, x.olcu), yeni = Math.round((x.miktar + (b.hasAttribute('data-art') ? a : -a)) * 100) / 100;
+      if (yeni <= 0) { S.sepet.splice(i, 1); S.olcuAcik = ''; silindi = true; } else x.miktar = yeni;
+      titret();
+    } else if (b.hasAttribute('data-olcu-ac')) {
+      S.olcuAcik = S.olcuAcik === anahtar ? '' : anahtar;
+    } else {
+      var yeniO = b.getAttribute('data-olcu'); if (yeniO === x.olcu) return;
+      // Gram karşılığını koru: ölçü değişince aynı miktara en yakın değeri öner
+      var g = deger(x.besin, x.olcu, x.miktar).gram;
+      if (yeniO === 'gram') x.miktar = Math.max(5, Math.round(g / 5) * 5);
+      else { var bir = gramOlcu(x.besin, yeniO); x.miktar = Math.max(0.5, Math.round(g / bir * 2) / 2); }
+      x.olcu = yeniO; S.olcuAcik = '';
+    }
+    if (sofraYenile) sofraYenile(id, silindi);
+  });
   function sepetCubugu() {
     var el = $('#sepet-cubuk'); if (!el) return;
     if (!S.sepet.length) { el.innerHTML = ''; return; }
@@ -914,23 +967,11 @@
   }
   function olcuSecenekleri(b) { return b.porsiyon ? ['1 porsiyon'] : b.olcu.map(function (x) { return x[0]; }).concat(['gram']); }
   function sepetAc() {
-    var acikOlcu = -1;
+    S.olcuAcik = '';
     function icerik() {
       if (!S.sepet.length) return '<div class="bos">Sofra boş.</div><button class="ikinci-dugme" id="geri">← Aramaya dön</button>';
-      var h = '<p class="ipucu">Miktarı ve ölçüyü buradan ayarla. Kaydettikten sonra da ekleme yapabilirsin.</p>';
-      S.sepet.forEach(function (x, i) {
-        var d = deger(x.besin, x.olcu, x.miktar);
-        h += '<div class="sepet-satir"><div class="satir"><div class="bilgi"><b>' + esc(x.besin.ad) + '</b><small>' + esc(miktarMetni(x.miktar, x.olcu)) + '</small><small>' + bicim(d.kcal) + ' kcal · ' + (x.besin.pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(d.p, 1) + ' g protein') +
-          '</small></div>' + adimSatiri('s:' + i, x.besin.ad, x.miktar, x.olcu, miktarAdimi(x.besin, x.olcu)) + '</div>' +
-          '<div class="sepet-arac">' + (x.besin.porsiyon ? '' : '<button class="olcu-dugme" data-olcu-ac="' + i + '" aria-expanded="' + (acikOlcu === i) + '">' + esc(birimAdi(x.olcu)) + ik('chevron-down', 'kucuk-ok') + '</button>') +
-          '<button class="metin-dugme" data-cikar="' + i + '">Çıkar</button></div>';
-        if (acikOlcu === i) {
-          h += '<div class="cipler olcu-secim" role="group" aria-label="Ölçü seç">' + olcuSecenekleri(x.besin).map(function (o) {
-            return '<button class="cip' + (o === x.olcu ? ' secili' : '') + '" aria-pressed="' + (o === x.olcu) + '" data-olcu-sec="' + i + '" data-olcu="' + esc(o) + '">' + esc(o === 'gram' ? 'gram' : birimAdi(o)) + '</button>';
-          }).join('') + (x.olcu === 'gram' ? '<span class="ipucu">artış ' + miktarAdimi(x.besin, 'gram') + ' g</span>' : '') + '</div>';
-        }
-        h += '</div>';
-      });
+      var h = '<p class="ipucu">Seçtiklerin burada alt alta. Miktara dokunarak ölçüyü değiştirebilirsin.</p>';
+      S.sepet.forEach(function (x, i) { h += sofraKutusu(x, i, 'satir sepet-satir'); });
       var t = sepetToplam();
       h += '<button class="metin-dugme vurgu" id="geri">' + ik('plus') + ' Başka bir şey ekle</button>' +
         '<div class="sepet-toplam"><span>Toplam · ' + S.sepet.length + ' besin</span><b>' + bicim(t.kcal) + ' kcal · ' + bicim(t.p, 1) + ' g protein</b></div>' +
@@ -940,29 +981,9 @@
     function bagla() {
       var g = $('#geri'); if (g) g.onclick = function () { ekleAc(penOgun); };
       var k = $('#sepet-kaydet2'); if (k) k.onclick = sepetKaydet;
-      document.querySelectorAll('#pencere [data-art],#pencere [data-az]').forEach(function (b) {
-        b.onclick = function () {
-          var art = b.hasAttribute('data-art'), i = +(b.getAttribute('data-art') || b.getAttribute('data-az')).slice(2), x = S.sepet[i];
-          var a = miktarAdimi(x.besin, x.olcu), yeni = Math.round((x.miktar + (art ? a : -a)) * 100) / 100;
-          if (yeni <= 0) S.sepet.splice(i, 1); else x.miktar = yeni;
-          titret(); yenile();
-        };
-      });
-      document.querySelectorAll('[data-cikar]').forEach(function (b) { b.onclick = function () { S.sepet.splice(+b.getAttribute('data-cikar'), 1); acikOlcu = -1; yenile(); }; });
-      document.querySelectorAll('[data-olcu-ac]').forEach(function (b) { b.onclick = function () { var i = +b.getAttribute('data-olcu-ac'); acikOlcu = acikOlcu === i ? -1 : i; yenile(); }; });
-      document.querySelectorAll('[data-olcu-sec]').forEach(function (b) {
-        b.onclick = function () {
-          var x = S.sepet[+b.getAttribute('data-olcu-sec')], yeni = b.getAttribute('data-olcu');
-          if (yeni === x.olcu) return;
-          // Gram karşılığını koru: ölçü değişince aynı miktara en yakın değeri öner
-          var g = deger(x.besin, x.olcu, x.miktar).gram;
-          if (yeni === 'gram') x.miktar = Math.max(5, Math.round(g / 5) * 5);
-          else { var bir = gramOlcu(x.besin, yeni); x.miktar = Math.max(0.5, Math.round(g / bir * 2) / 2); }
-          x.olcu = yeni; yenile();
-        };
-      });
     }
     function yenile() { pencereIcerik(icerik(), bagla, true); }
+    sofraYenile = yenile;
     pencereAc('Sofra · ' + ogunAdi(penOgun), icerik(), bagla);
   }
   function elleEkle(onAd) {

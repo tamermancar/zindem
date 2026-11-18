@@ -433,3 +433,15 @@ html[data-tema="koyu"] .sekme.acik .ikon { color: #D97706; }
 
 /* Kaydırmalı / klavyeli pencereler sabit yükseklikte: yazarken ve sonuç sayısı değişirken oynamaz (1.4.1) */
 .pencere.sabit { height: calc(100dvh - 32px - env(safe-area-inset-top)); max-height: none; }
+
+/* 1.4.2: Listede sofradaki besin (artı/eksi yerinde) ve ortak Sofra satırı */
+.sonuc.sofrada { gap: 8px; padding: 6px 4px; }
+.sonuc.sofrada .bilgi, .sepet-satir .bilgi { flex: 1; min-width: 0; }
+.sonuc.sofrada .bilgi b, .sepet-satir .bilgi b { display: block; font-size: 15px; font-weight: 700; line-height: 1.2; }
+.sonuc.sofrada .bilgi small, .sepet-satir .bilgi small { display: block; font-size: 12.5px; line-height: 1.25; color: var(--soluk); margin-top: 1px; }
+.miktar-dugme { display: inline-flex; align-items: center; gap: 2px; min-height: 28px; margin: 0 0 -3px; padding: 0 6px 0 0; border: 0; background: transparent;
+  color: var(--ana); font-size: 12.5px; font-weight: 700; text-align: left; }
+.miktar-dugme .ikon { width: 14px; height: 14px; stroke-width: 2.4; }
+.sepet-satir.satir { border-top: 0; border-bottom: 1px solid var(--cizgi); padding-left: 0; padding-right: 0; }
+.sofra-kutu .olcu-secim { padding: 0 0 10px; border-bottom: 1px solid var(--cizgi); }
+.sofra-kutu .sepet-satir.satir:has(+ .olcu-secim), .sofra-kutu .sonuc.sofrada:has(+ .olcu-secim) { border-bottom: 0; }
