@@ -7,3 +7,4 @@
 - `yap_ham.py`: USDA değerlerini ve porsiyon kayıtlarını (cup → su bardağı 200 ml) çevirir.
 - `yap_yemek.py`: ev yemekleri; oranlar nefisyemektarifleri.com, malzeme değerleri USDA, 1 porsiyon = tarifin kişi sayısının ortası.
 - `yap.py`: eski katalogun üstüne ekleyip `katalog.json`u yazar.
+- `yap_ek.py`: 1.5.1'de eklenen yemekler (etli nohut, çoban salatası; yemek.com oranları) için yalnızca eksik yemekleri ekler.

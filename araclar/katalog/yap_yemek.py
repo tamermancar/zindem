@@ -42,6 +42,12 @@ YEMEKLER = [
  ('y-tavuk-sote', 'Tavuk sote', 'Et, tavuk, balık', 'https://www.nefisyemektarifleri.com/tavuk-sote-tarifi/', '2-4 kişilik', 3, [
    ('u171077', 500, '500 g tavuk göğsü'), ('u171025', 2 * 14, '2 yk sıvı yağ'), ('u170459', 5, '1 tatlı kaşığı salça'), ('n11670', 2 * SIVRI, '2 yeşil biber'),
    ('u170108', 119, '1 kırmızı biber (orta)'), ('u170000', 110, '1 soğan (orta)'), ('u169230', 2 * 3, '2 diş sarımsak'), ('u170457', 2 * 123, '2 domates (orta)')]),
+ ('y-etli-nohut', 'Etli nohut', 'Baklagiller', 'https://yemek.com/tarif/etli-nohut-yemegi/', '4 kişilik (biber salçası domates salçası değeriyle)', 4, [
+   ('u170000', 110, '1 soğan (orta)'), ('u173757', 1.5 * 139, '1,5 su bardağı haşlanmış nohut'), ('u171757', 350, '350 g dana kuşbaşı'),
+   ('u170459', 1.5 * 16, '1,5 yk biber salçası'), ('u171413', 4 * 14, '4 yk zeytinyağı')]),
+ ('y-coban-salatasi', 'Çoban salatası', 'Salatalar', 'https://yemek.com/tarif/klasik-coban-salatasi', '6 kişilik (nane ve tuz sayılmadı)', 6, [
+   ('u168409', 2 * 158, '2 salatalık (soyulmuş, küçük boy)'), ('n11670', 4 * SIVRI, '4 sivri biber'), ('n11291', 7 * 15, '7 dal taze soğan'),
+   ('u170457', 3 * 182, '3 domates (büyük)'), ('u170416', 2.5, '2-3 dal maydanoz'), ('u171413', 28, '30 ml zeytinyağı'), ('u167747', 30.5, '30 ml limon suyu')]),
 ]
 OGUN = {'Çorbalar': [0, 3, 3, 0], 'Pilav ve makarna': [0, 2, 3, 0], 'Baklagiller': [0, 2, 3, 0], 'Sebze yemekleri': [0, 3, 3, 0],
         'Kahvaltılık': [3, 1, 0, 0], 'Salatalar': [0, 3, 3, 0], 'Et, tavuk, balık': [0, 2, 3, 0]}
