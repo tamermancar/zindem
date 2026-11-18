@@ -17,13 +17,13 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.4.0';
+  var SUNUCU_SURUM = '1.4.1';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
     anahtar: '', ayar: {}, hedefler: [], besinlerim: [], katalog: { besinler: [], kategoriler: [] },
     besinler: {}, kayitlar: [], gunluk: { su: 0, adim: '', uyku: '' }, agri: [], son: [], sik: {},
-    gun: '', bugun: '', gunler: {}, onceki: {}, gv: {}, aralikBas: '', oncekiBas: {}, oncekiSunucu: {}, yukleniyor: false, seciliOgun: '', yuklendi: false, hata: '', gonderiliyor: false, sonYukleme: 0
+    gun: '', bugun: '', gunler: {}, onceki: {}, sonGiden: [], gv: {}, aralikBas: '', oncekiBas: {}, oncekiSunucu: {}, yukleniyor: false, seciliOgun: '', yuklendi: false, hata: '', gonderiliyor: false, sonYukleme: 0
   };
 
   /* ---------- Yardımcılar ---------- */
@@ -196,6 +196,9 @@
         if (!c.ok) throw new Error(c.hata || 'hata');
         var tamam = {}; var hatali = [];
         (c.sonuc || []).forEach(function (s) { tamam[s.id] = 1; if (!s.ok) hatali.push(s.hata); });
+        var simdi = Date.now();
+        parti.forEach(function (x) { if (tamam[x.islemId]) S.sonGiden.push({ t: simdi, is: x }); });
+        S.sonGiden = S.sonGiden.filter(function (x) { return simdi - x.t < 300000; });
         bekleyenYaz(bekleyenler().filter(function (x) { return !tamam[x.islemId]; }));
         if (hatali.length) bildir('⚠ Bir kayıt yazılamadı: ' + hatali[0]);
         S.gonderiliyor = false; S.gonderHata = false; durumGoster();
@@ -252,7 +255,7 @@
     S.bugun = gunBul(Date.now());
     if (gun) S.gun = gun;
     if (!S.gun || S.gun > S.bugun) S.gun = S.bugun;
-    var istenen = S.gun, bas = gunKaydir(S.bugun, -(ARALIK_GUN - 1));
+    var istenen = S.gun, bas = gunKaydir(S.bugun, -(ARALIK_GUN - 1)), basladi = Date.now();
     if (istenen < bas) bas = istenen.slice(0, 8) + '01';
     return Promise.all([
       fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }),
@@ -268,6 +271,8 @@
       S.gv = {}; S.aralikBas = ''; S.oncekiBas = {}; S.oncekiSunucu = {};
       gunVerisiYaz(c, istenen);
       besinleriKur();
+      // Okuma sürerken tabloya gönderilen kayıtlar okunan veride olmayabilir: onları da yeniden uygula
+      islemleriUygula(S.sonGiden.filter(function (x) { return x.t >= basladi - 2000; }).map(function (x) { return x.is; }));
       bekleyenleriUygula();
       gunGoster(S.gv[S.gun] ? S.gun : istenen);
       if (!S.seciliOgun) S.seciliOgun = ogunBul(Date.now());
@@ -284,8 +289,9 @@
     });
   }
   // Sunucuya henüz gitmemiş kayıtlar ekranda görünsün
-  function bekleyenleriUygula() {
-    bekleyenler().forEach(function (is) {
+  function bekleyenleriUygula() { islemleriUygula(bekleyenler()); }
+  function islemleriUygula(liste) {
+    liste.forEach(function (is) {
       var v = is.veri, gun;
       if (is.tur === 'ogun_ekle' && S.gv[v.gun] && !kayitBul(v.id)) S.gv[v.gun].kayitlar.push(kayitNesnesi(v));
       if (is.tur === 'ogun_guncelle') { var k = kayitBul(v.id); if (k) { k['Miktar'] = v.miktar; k['Gram'] = v.gram; k['kcal'] = v.kcal; k['Protein'] = v.p; } }
@@ -440,7 +446,7 @@
   }
   function listeSatir(id, ikon, tur, ad, deger, oran, aria) {
     return '<button class="ls ls-' + tur + '" id="' + id + '" aria-label="' + esc(aria) + '"><span class="lk" aria-hidden="true">' + ik(ikon, ikon === 'barbell' ? 'capraz' : '') + '</span>' +
-      '<b>' + ad + '</b>' + ik('chevron-right', 'ok') + '<small>' + deger + '</small>' +
+      '<b>' + ad + '</b><small>' + deger + '</small>' +
       (oran >= 0 ? '<span class="cubuk" aria-hidden="true"><span style="width:' + Math.round(Math.max(0, Math.min(1, oran)) * 100) + '%"></span></span>' : '') + '</button>';
   }
   function toplamlar(liste) {
@@ -498,7 +504,7 @@
       document.querySelectorAll('#pencere [data-gun]').forEach(function (b) { b.onclick = function () { pencereKapat(); gunDegistir(b.getAttribute('data-gun')); }; });
       document.querySelectorAll('#pencere [data-bugune]').forEach(function (b) { b.onclick = function () { pencereKapat(); gunDegistir(S.bugun); }; });
     }
-    pencereAc('Gün seç', icerik(), bagla);
+    pencereAc('Gün seç', icerik(), bagla, true);
   }
   function selam() {
     var h = new Date().getHours();
@@ -620,8 +626,10 @@
     if (olcu === 'gram') return miktarYaz(miktar) + ' g';
     return miktarYaz(miktar) + ' ' + String(olcu || '').replace(/^1\s+/, '');
   }
-  function adimSatiri(veri, ad, miktar, olcu) {
-    return '<div class="adim" role="group" aria-label="' + esc(ad) + ' miktarı: ' + esc(miktarMetni(miktar, olcu)) + '"><button data-az="' + esc(veri) + '" aria-label="' + esc(ad) + ' azalt">' + ik('minus') + '</button>' +
+  // Artı/eksi (1.4.1): ortada dolgulu kare içinde miktar; eksi son adımda çöp kutusuna döner (basınca siler)
+  function adimSatiri(veri, ad, miktar, olcu, adimMiktari) {
+    var sil = adimMiktari && miktar - adimMiktari <= 0;
+    return '<div class="adim" role="group" aria-label="' + esc(ad) + ' miktarı: ' + esc(miktarMetni(miktar, olcu)) + '"><button data-az="' + esc(veri) + '"' + (sil ? ' class="sil"' : '') + ' aria-label="' + esc(ad) + (sil ? ' sil' : ' azalt') + '">' + ik(sil ? 'trash' : 'minus') + '</button>' +
       '<span class="adim-deger"><b>' + miktarYaz(miktar) + (olcu === 'gram' ? ' g' : '') + '</b></span>' +
       '<button data-art="' + esc(veri) + '" aria-label="' + esc(ad) + ' artır">' + ik('plus') + '</button></div>';
   }
@@ -631,13 +639,14 @@
     var tt = toplamlar(liste);
     var ozet = liste.length ? bicim(tt.kcal) + ' kcal · ' + bicim(tt.p, 1) + ' g protein' + (tt.pYok ? ' ⚠' : '') : '— kcal · — g protein';
     var h = '<section class="kart ogun-kart ' + (S.gecis || '') + '" role="tabpanel" aria-label="' + o.ad + '" data-kart="' + o.k + '">' +
-      '<div class="ogun-ust"><span class="ogun-yazi"><span class="ogun-ad">' + o.ad + (simdi ? '<span class="simdi-rozet">şimdi</span>' : '') + '</span><span class="ogun-ozet">' + ozet + '</span></span></div>';
+      '<div class="ogun-ust"><span class="ogun-yazi"><span class="ogun-ad">' + o.ad + (simdi ? '<span class="simdi-rozet">şimdi</span>' : '') + '</span><span class="ogun-ozet">' + ozet + '</span></span>' +
+      '<button class="ekle-dugme" data-ekle="' + o.k + '" aria-label="' + YONELME[o.k] + ' ekle">' + ik('plus') + 'Ekle</button></div>';
     liste.forEach(function (k) {
       var besinVar = !!S.besinler[k['Besin ID']];
       var pYok = k['Protein'] === '' || k['Protein'] == null;
-      h += '<div class="satir"><div class="bilgi"><b>' + esc(k['Ad']) + '</b><small>' + esc(miktarMetni(sayi(k['Miktar']), k['Ölçü'])) + ' · ' + bicim(sayi(k['kcal'])) + ' kcal · ' +
-        (pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(sayi(k['Protein']), 1) + ' g') + '</small></div>';
-      if (besinVar) h += adimSatiri('k:' + k['ID'], k['Ad'], sayi(k['Miktar']), k['Ölçü']);
+      h += '<div class="satir"><div class="bilgi"><b>' + esc(k['Ad']) + '</b><small>' + esc(miktarMetni(sayi(k['Miktar']), k['Ölçü'])) + '</small><small>' + bicim(sayi(k['kcal'])) + ' kcal · ' +
+        (pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(sayi(k['Protein']), 1) + ' g protein') + '</small></div>';
+      if (besinVar) h += adimSatiri('k:' + k['ID'], k['Ad'], sayi(k['Miktar']), k['Ölçü'], miktarAdimi(S.besinler[k['Besin ID']], k['Ölçü']));
       h += '</div>';
     });
     if (!liste.length) h += '<div class="bos">Henüz bir şey eklemedin.</div>';
@@ -645,7 +654,7 @@
     var tekrar = !liste.length && onc && onc.kayitlar.some(function (x) { return S.besinler[x.besinId]; })
       ? '<button class="ikinci-dugme tekrar" data-tekrar="' + o.k + '">' + ik('arrow-back-up') +
         (bugunMu() && onc.gun === gunKaydir(S.gun, -1) ? 'Dünkü ' + TEKRAR_AD[o.k][0] : gunAdiKisa(onc.gun) + ' ' + TEKRAR_AD[o.k][1]) + ' ekle</button>' : '';
-    h += '<div class="ogun-alt">' + tekrar + '<button class="ana-dugme ince" data-ekle="' + o.k + '">' + ik('plus') + YONELME[o.k] + ' ekle</button></div>';
+    if (tekrar) h += '<div class="ogun-alt">' + tekrar + '</div>';
     return h + '</section>';
   }
   function sonOlcu(b) {
@@ -763,9 +772,11 @@
 
   /* ---------- Alttan açılan pencere ---------- */
   var oncekiOdak = null;
-  function pencereAc(baslik, icerik, bagla) {
+  // Kaydırmalı ve klavyeli pencereler sabit yükseklikte açılır; içerik ya da klavye değişince pencere oynamaz (1.4.1)
+  function pencereAc(baslik, icerik, bagla, kucuk) {
     oncekiOdak = document.activeElement;
     var p = $('#pencere');
+    p.classList.toggle('sabit', !kucuk);
     p.innerHTML = '<div class="tutamac" aria-hidden="true"></div><div class="pencere-ust"><h2 id="pencere-baslik">' + baslik + '</h2><button class="kapat" id="kapat" aria-label="Kapat">✕</button></div><div id="pencere-ic">' + icerik + '</div>';
     p.hidden = false; $('#perde').hidden = false;
     document.body.style.overflow = 'hidden';
@@ -909,8 +920,8 @@
       var h = '<p class="ipucu">Miktarı ve ölçüyü buradan ayarla. Kaydettikten sonra da ekleme yapabilirsin.</p>';
       S.sepet.forEach(function (x, i) {
         var d = deger(x.besin, x.olcu, x.miktar);
-        h += '<div class="sepet-satir"><div class="satir"><div class="bilgi"><b>' + esc(x.besin.ad) + '</b><small>' + esc(miktarMetni(x.miktar, x.olcu)) + ' · ' + bicim(d.kcal) + ' kcal · ' + (x.besin.pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(d.p, 1) + ' g') +
-          '</small></div>' + adimSatiri('s:' + i, x.besin.ad, x.miktar, x.olcu) + '</div>' +
+        h += '<div class="sepet-satir"><div class="satir"><div class="bilgi"><b>' + esc(x.besin.ad) + '</b><small>' + esc(miktarMetni(x.miktar, x.olcu)) + '</small><small>' + bicim(d.kcal) + ' kcal · ' + (x.besin.pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(d.p, 1) + ' g protein') +
+          '</small></div>' + adimSatiri('s:' + i, x.besin.ad, x.miktar, x.olcu, miktarAdimi(x.besin, x.olcu)) + '</div>' +
           '<div class="sepet-arac">' + (x.besin.porsiyon ? '' : '<button class="olcu-dugme" data-olcu-ac="' + i + '" aria-expanded="' + (acikOlcu === i) + '">' + esc(birimAdi(x.olcu)) + ik('chevron-down', 'kucuk-ok') + '</button>') +
           '<button class="metin-dugme" data-cikar="' + i + '">Çıkar</button></div>';
         if (acikOlcu === i) {
@@ -1189,7 +1200,7 @@
     // Gün değiştiyse ya da 5 dakikadan uzun süre arka plandaysa yeniden yükle
     if (gunBul(Date.now()) !== S.bugun || Date.now() - S.sonYukleme > 300000) {
       if (gunBul(Date.now()) !== S.bugun) { S.seciliOgun = ogunBul(Date.now()); S.acikOgun = ''; if (S.gun === S.bugun) S.gun = gunBul(Date.now()); }
-      yukle().then(function () { if ($('#pencere').hidden) ciz(); gonder(); });
+      yukle().then(function () { if ($('#pencere').hidden) { var y = window.scrollY; ciz(); window.scrollTo(0, y); } gonder(); });
     } else gonder();
   });
   baslat();
