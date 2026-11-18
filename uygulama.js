@@ -17,7 +17,7 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.4.2';
+  var SUNUCU_SURUM = '1.5.0';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -93,7 +93,9 @@
   function besinleriKur() {
     var b = {}, ortulen = {};
     S.katalog.besinler.forEach(function (x) {
-      b[x.id] = { id: x.id, ad: x.ad, kat: x.g || x.kat, grup: x.g || grupBul(x.kat, x.ad), o: x.o || null, porsiyon: false, kcal: x.kcal, p: x.p, olcu: x.olcu.slice(), kaynak: x.kaynak, benim: false };
+      // 1.5: porsiyon = ev yemeği (değerler 1 porsiyon için); malzeme = çiğ/kuru tarif malzemesi (listede görünmez)
+      b[x.id] = { id: x.id, ad: x.ad, kat: x.g || x.kat, grup: x.g || grupBul(x.kat, x.ad), o: x.o || null, porsiyon: !!x.porsiyon, kcal: x.kcal, p: x.p,
+        olcu: x.porsiyon ? [['1 porsiyon', 1]] : x.olcu.slice(), kaynak: x.kaynak, benim: false, malzeme: !!x.m, malzemeler: x.malzemeler || null };
     });
     S.besinlerim.forEach(function (r) {
       var id = r['ID']; if (!id) return;
@@ -259,7 +261,7 @@
     if (istenen < bas) bas = istenen.slice(0, 8) + '01';
     return Promise.all([
       fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }),
-      S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=2').then(function (r) { return r.json(); })
+      S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=3').then(function (r) { return r.json(); })
     ]).then(function (sonuc) {
       var c = sonuc[0];
       if (!c.ok) { S.hata = c.hata === 'yetkisiz' ? 'yetkisiz' : 'Sunucu hatası: ' + c.hata; return; }
@@ -824,8 +826,8 @@
   }
   function grupCipleri() {
     var dolu = {};
-    Object.keys(S.besinler).forEach(function (k) { if (!S.ortulen[k]) dolu[S.besinler[k].grup] = 1; });
-    var liste = [['oneri', 'Önerilen']].concat(GRUPLAR.filter(function (g) { return dolu[g]; }).map(function (g) { return [g, g]; }));
+    gorunurBesinler().forEach(function (b) { if (!b.benim) dolu[b.grup] = 1; });
+    var liste = [['oneri', 'Önerilen'], ['benim', 'Benim eklediklerim']].concat(GRUPLAR.filter(function (g) { return dolu[g]; }).map(function (g) { return [g, g]; }));
     var el = $('#grup-cipler'); if (!el) return;
     el.innerHTML = liste.map(function (x) {
       return '<button class="cip' + (grupSec === x[0] ? ' secili' : '') + '" aria-pressed="' + (grupSec === x[0]) + '" data-grup="' + esc(x[0]) + '">' + esc(x[1]) + '</button>';
@@ -838,7 +840,7 @@
       };
     });
   }
-  function gorunurBesinler() { return Object.keys(S.besinler).map(function (k) { return S.besinler[k]; }).filter(function (b) { return !S.ortulen[b.id]; }); }
+  function gorunurBesinler() { return Object.keys(S.besinler).map(function (k) { return S.besinler[k]; }).filter(function (b) { return !S.ortulen[b.id] && !b.malzeme; }); }
   function sonuclariGoster(q) {
     var h = '';
     var qs = sadelestir(q.trim()).split(/\s+/).filter(Boolean);
@@ -853,13 +855,13 @@
       var son = S.son.map(function (x) { return S.besinler[x.besinId]; })
         .filter(function (b) { return b && !S.ortulen[b.id] && !gorulen[b.id] && ogunPuani(b, penOgun) > 0 && (gorulen[b.id] = 1); }).slice(0, 6);
       if (son.length) h += '<div class="bolum-baslik">Son yenenler</div>' + son.map(sonucSatiri).join('');
-      var oneri = gorunurBesinler().filter(function (b) { return !gorulen[b.id] && ogunPuani(b, penOgun) >= 2; })
+      var oneri = gorunurBesinler().filter(function (b) { return !gorulen[b.id] && !b.benim && ogunPuani(b, penOgun) >= 2; })
         .sort(function (a, b) { return (siraPuani(b, penOgun) - siraPuani(a, penOgun)) || (b.benim - a.benim) || a.ad.localeCompare(b.ad, 'tr'); }).slice(0, 25);
       if (oneri.length) h += '<div class="bolum-baslik">' + esc(ad) + ' için öneriler</div>' + oneri.map(sonucSatiri).join('');
     } else if (!qs.length) {
-      var grup = gorunurBesinler().filter(function (b) { return b.grup === grupSec; })
+      var grup = gorunurBesinler().filter(function (b) { return grupSec === 'benim' ? b.benim : b.grup === grupSec && !b.benim; })
         .sort(function (a, b) { return (siraPuani(b, penOgun) - siraPuani(a, penOgun)) || (b.benim - a.benim) || a.ad.localeCompare(b.ad, 'tr'); });
-      h += grup.length ? grup.map(sonucSatiri).join('') : '<div class="bos">Bu grupta besin yok.</div>';
+      h += grup.length ? grup.map(sonucSatiri).join('') : '<div class="bos">' + (grupSec === 'benim' ? 'Henüz kendi eklediğin bir besin yok. Aşağıdan "Elle ekle" ile ekleyebilirsin.' : 'Bu grupta besin yok.') + '</div>';
     } else {
       var hepsi = gorunurBesinler()
         .filter(function (b) { var t = sadelestir(b.ad + ' ' + b.grup); return qs.every(function (x) { return t.indexOf(x) >= 0; }); })
@@ -950,6 +952,12 @@
     var el = $('#sepet-cubuk'); if (!el) return;
     if (!S.sepet.length) { el.innerHTML = ''; return; }
     var t = sepetToplam();
+    if (el.querySelector('.sepet-cubuk')) { // çubuk zaten açık: yeniden kaydırmadan sadece sayıları güncelle
+      el.querySelector('.sayac').textContent = S.sepet.length;
+      el.querySelector('.sepet-yazi b').textContent = bicim(t.kcal) + ' kcal · ' + bicim(t.p, 1) + ' g';
+      el.querySelector('#sepet-gor').setAttribute('aria-label', 'Sofrayı gör: ' + S.sepet.length + ' besin');
+      return;
+    }
     el.innerHTML = '<div class="sepet-cubuk"><button class="sepet-gor" id="sepet-gor" aria-label="Sofrayı gör: ' + S.sepet.length + ' besin">' +
       '<span class="sepet-simge">' + ik('tools-kitchen-2') + '<span class="sayac">' + S.sepet.length + '</span></span>' +
       '<span class="sepet-yazi"><b>' + bicim(t.kcal) + ' kcal · ' + bicim(t.p, 1) + ' g</b><small>Sofrayı gör ve düzenle ›</small></span></button>' +
@@ -1184,10 +1192,13 @@
     var acik = '';
     function icerik(q) {
       var qs = sadelestir((q || '').trim()).split(/\s+/).filter(Boolean);
-      var liste = gorunurBesinler().filter(function (b) { var t = sadelestir(b.ad + ' ' + b.grup); return qs.every(function (x) { return t.indexOf(x) >= 0; }); });
+      var tum = Object.keys(S.besinler).map(function (k) { return S.besinler[k]; }).filter(function (b) { return !S.ortulen[b.id]; });
+      var liste = tum.filter(function (b) { var t = sadelestir(b.ad + ' ' + b.grup); return qs.every(function (x) { return t.indexOf(x) >= 0; }); });
       var h = '';
-      GRUPLAR.forEach(function (g) {
-        var l = liste.filter(function (b) { return b.grup === g; }).sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); });
+      ['Benim eklediklerim'].concat(GRUPLAR, ['Tarif malzemeleri (listede görünmez)']).forEach(function (g) {
+        var l = liste.filter(function (b) {
+          return g === 'Benim eklediklerim' ? b.benim : g.indexOf('Tarif malzemeleri') === 0 ? b.malzeme && !b.benim : b.grup === g && !b.benim && !b.malzeme;
+        }).sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); });
         if (!l.length) return;
         var ac = !!qs.length || acik === g;
         h += '<section class="liste-grup"><button class="liste-baslik" data-lg="' + esc(g) + '" aria-expanded="' + ac + '"><b>' + esc(g) + '</b><small>' + l.length + ' besin</small>' + ik(ac ? 'chevron-up' : 'chevron-down', 'kucuk-ok') + '</button>';
@@ -1196,7 +1207,9 @@
           var olc = b.porsiyon ? '' : b.olcu.map(function (x) { return esc(x[0]) + ' = ' + bicim(x[1], 1) + ' g'; }).join(' · ');
           return '<div class="liste-satir"><b>' + esc(b.ad) + (b.benim ? ' <span class="etiket">Benim</span>' : '') + '</b>' +
             '<span>' + temel + ': ' + bicim(b.kcal) + ' kcal · ' + (b.pYok ? '⚠ protein ?' : bicim(b.p, 1) + ' g protein') + '</span>' +
-            (olc ? '<small>' + olc + '</small>' : '') + (b.kaynak ? '<small class="kaynak">Kaynak: ' + esc(b.kaynak) + '</small>' : '') + '</div>';
+            (olc ? '<small>' + olc + '</small>' : '') +
+            (b.malzemeler ? '<small>Tarif: ' + b.malzemeler.map(function (m) { return esc(m[2]); }).join(', ') + '</small>' : '') +
+            (b.kaynak ? '<small class="kaynak">Kaynak: ' + esc(b.kaynak) + '</small>' : '') + '</div>';
         }).join('');
         h += '</section>';
       });
