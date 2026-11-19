@@ -43,8 +43,15 @@ KURALLAR = r"""() => {
       }
     }
     // 2) Yazı taşması: tek satırlık yazı kutusundan taşıyor ama "…" yok
-    if (e.children.length === 0 && e.textContent.trim() && cs.overflowX !== 'visible' && e.scrollWidth > e.clientWidth + 1 && cs.textOverflow !== 'ellipsis')
+    // (1.8.1+ antrenman taslağı) taşma görünür olsa da sayılır: yazı kutusundan dışarı akıp başka öğenin altına giriyor
+    if (e.children.length === 0 && e.textContent.trim() && e.clientWidth > 0 && cs.display !== 'inline' && cs.textOverflow !== 'ellipsis' && (() => { const r = document.createRange(); r.selectNodeContents(e); return r.getBoundingClientRect().width > e.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) + 1; })())
       out.push(['❌', 'Yazı kesiliyor', ad(e) + ': "' + e.textContent.trim().slice(0, 40) + '"']);
+    // 2b) Stilsiz düğme: tarayıcının varsayılan düğmesi (gri zemin / kabarık kenar) — yanlış sınıf adı demek
+    if (e.tagName === 'BUTTON' && (/outset/.test(cs.borderTopStyle) || cs.backgroundColor === 'rgb(239, 239, 239)' || cs.backgroundColor === 'rgb(240, 240, 240)'))
+      out.push(['❌', 'Stilsiz düğme', ad(e) + ': "' + e.textContent.trim().slice(0, 30) + '"']);
+    // 2c) Simge yazının üstünde/ayrı satırda: arama kutusunda simge ile kutu aynı satırda olmalı
+    if (e.matches('.arama-kutu')) { const i = e.querySelector('.ikon'), k = e.querySelector('input');
+      if (i && k) { const a = i.getBoundingClientRect(), bb = k.getBoundingClientRect(); if (a.bottom <= bb.top + 2) out.push(['❌', 'Arama simgesi kutunun dışında', ad(e)]); } }
     // 3) Uzun açıklama yazısı (Tamer kuralı: "commit mesajı gibi" açıklamalar gösterilmez)
     if (/^(P|SMALL|DIV|SPAN)$/.test(e.tagName) && e.matches('.ipucu, .aciklama, p') && !e.closest('.liste-satir, .satir, .sonuc, .bildirim, .not-kart, .alt-not, .menu-not, .yedek-kutu')) {
       const t = e.innerText.trim(); if (t.length > 70) out.push(['⚠', 'Uzun açıklama', ad(e) + ': "' + t.slice(0, 50) + '…" (' + t.length + ' harf)']);

@@ -1,0 +1,84 @@
+/* ===== Antrenman taslağı 2 (renkler sadece var(--…), simgeler Tabler) ===== */
+/* Boş durum */
+.t2-bos { text-align: center; padding: 24px 18px 14px; margin-top: 12px; }
+.t2-bos-ikon { display: inline-flex; width: 56px; height: 56px; border-radius: 50%; background: var(--yumusak); color: var(--ana); align-items: center; justify-content: center; }
+.t2-bos-ikon .ikon { width: 28px; height: 28px; }
+.t2-bos h2 { margin: 12px 0 4px; font-size: 18px; font-weight: 800; }
+.t2-bos p { margin: 0 0 14px; font-size: 14px; color: var(--soluk); line-height: 1.4; }
+.t2-bos .ana-dugme, .t2-bos .ikinci-dugme { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
+.t2-bos .ikinci-dugme { margin-top: 8px; }
+/* Ok satırı (hazır program, antrenman, program) */
+.t2-satir { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 60px; padding: 10px 12px 10px 16px; border: 0; border-top: 1px solid var(--cizgi); background: transparent; color: var(--yazi); text-align: left; }
+.an-kart > .t2-satir:first-child, .t2-liste > .t2-satir:first-child, .t2-duzen:first-of-type .t2-satir { border-top: 0; }
+.t2-satir > span { flex: 1; min-width: 0; }
+.t2-satir b { display: block; font-size: 15px; font-weight: 700; }
+.t2-satir small { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 1px; }
+.t2-satir > .ikon { width: 18px; height: 18px; color: var(--soluk); flex: none; }
+.t2-liste .t2-satir, .t2-duzen .t2-satir { padding-left: 0; padding-right: 0; }
+.t2-duzen + .t2-duzen .t2-satir { border-top: 1px solid var(--cizgi); }
+.bolum-baslik + .t2-duzen .t2-satir { border-top: 0; }
+/* Tanışma */
+.t2-adimlar { display: flex; gap: 4px; padding: 0 0 8px; }
+.t2-adimlar span { flex: 1; height: 4px; border-radius: 2px; background: var(--h-iz-kal); }
+.t2-adimlar span.dolu { background: var(--ana); }
+.t2-soru { font-size: 20px; font-weight: 800; margin: 10px 0 4px; line-height: 1.25; }
+.t2-not { font-size: 14px; color: var(--soluk); margin: 0 0 10px; }
+.t2-secim { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.t2-secim button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 60px; padding: 10px 14px; border: 1.5px solid var(--halka); border-radius: 16px; background: var(--kart); color: var(--yazi); text-align: left; }
+.t2-secim button > span { flex: 1; min-width: 0; }
+.t2-secim b { display: block; font-size: 15px; font-weight: 700; }
+.t2-secim small { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 2px; line-height: 1.3; }
+.t2-secim button.secili { border-color: var(--ana); background: var(--yumusak); }
+.t2-secim button.secili b { color: var(--yumusak-yazi); }
+.t2-secim .ikon { width: 20px; height: 20px; color: var(--ana); flex: none; }
+/* Hareket listesi */
+.t2-filtre { display: flex; gap: 6px; overflow-x: auto; margin: 6px -16px 0; padding: 4px 16px 6px; scrollbar-width: none; }
+.t2-filtre::-webkit-scrollbar { display: none; }
+.t2-filtre .cip { flex: none; }
+.t2-acilir { gap: 4px; }
+.t2-acilir .ikon { width: 14px; height: 14px; }
+.t2-hr { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 16px; border-top: 1px solid var(--cizgi); min-height: 60px; }
+.t2-hr:first-child { border-top: 0; }
+.t2-hr-bilgi { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; text-align: left; color: var(--yazi); }
+.t2-hr-bilgi b { display: block; font-size: 15px; font-weight: 700; }
+.t2-hr-bilgi small { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 1px; }
+.t2-hr-bilgi .an-etiket { margin-top: 4px; }
+.t2-ekle { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--halka); background: var(--kart); color: var(--ana); display: flex; align-items: center; justify-content: center; position: relative; }
+.t2-ekle::after { content: ''; position: absolute; inset: -2px; }
+.t2-ekle.eklendi { background: var(--ana); border-color: var(--ana); color: var(--ana-yazi); }
+.t2-ekle .ikon { width: 18px; height: 18px; }
+.an-etiket { display: inline-flex; align-items: center; gap: 3px; }
+.an-etiket .ikon { width: 12px; height: 12px; }
+.t2-duz { padding: 0; }
+.t2-duz .t2-hr { padding-left: 0; padding-right: 0; }
+.t2-sepet { display: flex; align-items: center; gap: 10px; }
+.t2-sepet > span { flex: 1; font-size: 14px; }
+.t2-sepet .ana-dugme { margin-top: 0; width: auto; padding: 0 22px; }
+/* Detay */
+.t2-uyari { display: flex; gap: 8px; align-items: flex-start; background: var(--dikkat-zemin); color: var(--yazi); border-radius: 14px; padding: 10px 12px; margin-top: 10px; font-size: 14px; line-height: 1.4; }
+.t2-uyari .ikon { width: 18px; height: 18px; color: var(--dikkat); flex: none; margin-top: 1px; }
+.t2-uyari b { color: var(--dikkat); }
+.t2-kaynak { font-size: 12px; color: var(--soluk); margin: 16px 0 0; }
+/* Program */
+.t2-hafta { display: flex; gap: 4px; margin-top: 12px; }
+.t2-hafta > div { flex: 1 1 0; min-width: 0; text-align: center; border-radius: 12px; background: var(--yumusak); padding: 6px 0; }
+.t2-hafta > div.dinlen { background: transparent; border: 1px dashed var(--kenar); }
+.t2-hafta small { display: block; font-size: 11px; font-weight: 700; color: var(--soluk); }
+.t2-hafta b { display: block; font-size: 12px; font-weight: 800; color: var(--yumusak-yazi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t2-hafta .dinlen b { color: var(--soluk); }
+.an-ust .ikinci-dugme { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 12px; }
+.t2-sayac { display: flex; align-items: center; gap: 10px; min-height: 56px; border-bottom: 1px solid var(--cizgi); font-size: 15px; font-weight: 600; }
+.t2-sayac > span { flex: 1; }
+.t2-sil { color: var(--tehlike); margin-top: 8px; padding: 0; }
+/* Bitir: yarım kaldı */
+.t2-yarim { text-align: center; font-size: 15px; margin: 6px 0 2px; }
+.t2-yarim b { font-size: 22px; font-weight: 800; color: var(--antrenman); }
+/* Haftanın özeti: Tabler simgeleri */
+.hf-liste li em { display: flex; align-items: center; justify-content: center; }
+.hf-liste li em .ikon { width: 20px; height: 20px; }
+.hf-liste li em.ok { color: var(--tamam); }
+.hf-liste li em.yarim { color: var(--dikkat); }
+
+.t2-plan label { flex: none; width: 92px; white-space: nowrap; }
+.m-ust .t2-filtre { margin-bottom: 0; }
+.t2-ek { padding-top: 10px; }
