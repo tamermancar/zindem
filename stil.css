@@ -653,3 +653,5 @@ body.klavye .sepet-cubuk { display: none; }
 .surgu-balon::after { border-top-color: var(--kb); }
 /* Bildirim onay simgesi yeşil */
 .bildirim .b-ikon { color: #4ADE80; }
+/* Sürgü topu balonla aynı renk (Tamer, 19 Kasım 11:31); dolu çizgi parlak kalır */
+.surgu-top { border-color: var(--kb); }
