@@ -18,7 +18,7 @@
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
   var SUNUCU_SURUM = '1.7.1';
-  var SURUM = '1.8';
+  var SURUM = '1.8.1';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -967,7 +967,7 @@
     var v = S.gunluk.adim;
     pencereAc(ik('footsteps', 'adim-renk') + 'Adım',
       '<div class="form-alan"><label for="adim-kutu">Bugünkü adım sayısı</label><div class="satir-form"><input id="adim-kutu" type="number" inputmode="numeric" min="0" step="1" value="' + esc(v) + '" placeholder="8000">' +
-      '<button class="ana-dugme dar" id="adim-kaydet">Kaydet</button></div></div><p class="ipucu">Gün içinde istediğin kadar güncelleyebilirsin; son yazdığın sayı geçerli olur.</p>',
+      '<button class="ana-dugme dar" id="adim-kaydet">Kaydet</button></div></div><p class="ipucu">Son yazdığın sayı geçerli olur.</p>',
       function () {
         var k = $('#adim-kutu'); setTimeout(function () { k.focus(); }, 80);
         $('#adim-kaydet').onclick = function () {
@@ -1282,6 +1282,7 @@
       if (hedef.classList.contains('tm-miktar') || hedef.type === 'number' || hedef.inputMode === 'decimal' || hedef.inputMode === 'numeric') setTimeout(function () { try { hedef.select(); } catch (x) { /* yok */ } }, 0);
       clearTimeout(zaman); document.body.classList.add('klavye');
       var el = e.target;
+      if (el.closest('.pencere-bas')) return; // 1.8.1: sabit başlıktaki arama zaten görünür; kaydırma listeyi kaçırıyordu
       setTimeout(function () { if (document.activeElement === el && el.scrollIntoView) el.scrollIntoView({ block: el.type === 'search' ? 'start' : 'center', behavior: 'smooth' }); }, 320);
     });
     document.addEventListener('focusout', function (e) {
@@ -1850,13 +1851,13 @@
    * Göz atma ve tarif hazırlama yeri. Yemek kaydı sadece Bugün › + Ekle'den yapılır. */
   var M = { sekme: 'tarif', q: '', acik: '' };
   function mutfakCiz(ana) {
-    ana.innerHTML = '<header class="ekran-ust"><h1>Mutfak</h1><button class="ekle-dugme" id="m-yeni">' + ik('plus') + 'Yeni tarif</button></header>' +
+    ana.innerHTML = '<div class="m-ust"><header class="ekran-ust"><h1>Mutfak</h1><button class="ekle-dugme" id="m-yeni">' + ik('plus') + 'Yeni tarif</button></header>' +
       '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<label class="gizli-yazi" for="m-ara">Tarif ya da besin ara</label><input id="m-ara" class="arama" type="search" placeholder="' + (M.sekme === 'tarif' ? 'Tarif ara' : 'Besin ara') + '" autocomplete="off" value="' + esc(M.q) + '">' + aramaSil() + '</div>' +
       '<div class="grup-cipler m-sekmeler" role="tablist" aria-label="Mutfak">' +
       [['tarif', 'Tariflerim'], ['besin', 'Besinler']].map(function (x) {
         var on = M.sekme === x[0];
         return '<button class="sekme-ciz' + (on ? ' secili' : '') + '" role="tab" aria-selected="' + on + '" data-m-sekme="' + x[0] + '">' + x[1] + '</button>';
-      }).join('') + '</div>' +
+      }).join('') + '</div></div>' +
       '<div id="m-liste">' + mutfakListe() + '</div>' +
       '';
     var a = $('#m-ara');
@@ -1871,7 +1872,14 @@
   function mutfakBagla() {
     document.querySelectorAll('#m-liste [data-m-tarif]').forEach(function (b) { b.onclick = function () { tarifAc({ kaynak: b.getAttribute('data-m-tarif'), mutfak: true }); }; });
     document.querySelectorAll('#m-liste [data-lg]').forEach(function (b) {
-      b.onclick = function () { var g = b.getAttribute('data-lg'); M.acik = M.acik === g ? '' : g; $('#m-liste').innerHTML = mutfakListe(); mutfakBagla(); };
+      b.onclick = function () {
+        // 1.8.1: açılan grubun başlığı sabit üst bölümün hemen altına gelir; kapanınca başlık parmağın altında yerinde kalır
+        var g = b.getAttribute('data-lg'), once = b.getBoundingClientRect().top;
+        M.acik = M.acik === g ? '' : g; $('#m-liste').innerHTML = mutfakListe(); mutfakBagla();
+        var yeni = document.querySelector('#m-liste [data-lg="' + g.replace(/"/g, '\\"') + '"]'); if (!yeni) return;
+        var ust = $('.m-ust').getBoundingClientRect().bottom + 4, simdi = yeni.getBoundingClientRect().top;
+        window.scrollBy(0, M.acik ? simdi - ust : simdi - once);
+      };
     });
   }
   function mutfakListe() {
@@ -1901,14 +1909,14 @@
     var qs = sadelestir((q || '').trim()).split(/\s+/).filter(Boolean);
     var tum = Object.keys(S.besinler).map(function (k) { return S.besinler[k]; }).filter(function (b) { return !S.ortulen[b.id] && !b.gizli && !b.sablon && !b.tarif; });
     var liste = tum.filter(function (b) { var t = sadelestir(b.ad + ' ' + b.grup); return qs.every(function (x) { return t.indexOf(x) >= 0; }); });
-    var h = '<p class="ipucu" style="margin:0 0 6px">Değerler 100 g ya da 1 porsiyon içindir. Kendi eklediklerin "Benim" etiketiyle görünür.</p>';
+    var h = ''; // 1.8.1: açıklama yazısı kaldırıldı (uzun açıklama gösterilmez kuralı)
     ['Benim eklediklerim'].concat(GRUPLAR, ['Tarif malzemeleri (listede görünmez)']).forEach(function (g) {
       var l = liste.filter(function (b) {
         return g === 'Benim eklediklerim' ? b.benim : g.indexOf('Tarif malzemeleri') === 0 ? b.malzeme && !b.benim : b.grup === g && !b.benim && !b.malzeme;
       }).sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); });
       if (!l.length) return;
       var ac = !!qs.length || acik === g;
-      h += '<section class="liste-grup"><button class="liste-baslik" data-lg="' + esc(g) + '" aria-expanded="' + ac + '"><b>' + esc(g) + '</b><small>' + l.length + ' besin</small>' + ik(ac ? 'chevron-up' : 'chevron-down', 'kucuk-ok') + '</button>';
+      h += '<section class="liste-grup"><button class="liste-baslik" data-lg="' + esc(g) + '" aria-expanded="' + ac + '"><b>' + esc(g.replace(' (listede görünmez)', '')) + '</b><small>' + l.length + (g.indexOf('Tarif malzemeleri') === 0 ? ' · listede yok' : ' besin') + '</small>' + ik(ac ? 'chevron-up' : 'chevron-down', 'kucuk-ok') + '</button>';
       if (ac) h += l.map(function (b) {
         var temel = b.porsiyon ? '1 porsiyon' : '100 g';
         var olc = b.porsiyon ? '' : b.olcu.map(function (x) { return esc(x[0]) + ' = ' + bicim(x[1], 1) + ' g'; }).join(' · ');

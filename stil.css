@@ -421,7 +421,7 @@ button.profil:active { transform: scale(.96); }
 @keyframes kaySol { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
 
 /* Öğün kartı */
-.ogunler { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; overflow-x: clip; /* kayan kart taşıp sayfayı oynatmasın */ }
+.ogunler { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; /* 1.8.1: overflow-x: clip kaldırıldı, kartların gölgesini kesiyordu; kayan satırları .ogun-kart zaten kırpıyor */ }
 .ogun-kart { padding: 0; margin-top: 0; overflow: clip; }
 .ogun-kart.seritten { animation: acil .24s ease-out; }
 .ogun-ust {
@@ -617,6 +617,11 @@ button.sonuc.tarif-satir { color: inherit; font: inherit; cursor: pointer; }
 .ekran-ust { display: flex; align-items: center; gap: 10px; min-height: 52px; margin: 4px 0 2px; }
 .ekran-ust h1 { flex: 1; margin: 0; font-size: 22px; font-weight: 800; }
 .m-sekmeler { margin-top: 4px; }
+/* 1.8.1: Mutfak'ta başlık + arama + sekmeler kaydırınca üstte kalır (pencere-bas gibi). Zemin, gövdenin sabit zeminiyle aynı */
+.m-ust { position: sticky; top: 0; z-index: 5; margin: calc(-12px - env(safe-area-inset-top)) -16px 0; padding: calc(12px + env(safe-area-inset-top)) 16px 0;
+  background-color: var(--zemin); background-image: var(--zemin-isik); background-attachment: fixed; }
+.m-ust::after { content: ''; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px; pointer-events: none; background: linear-gradient(var(--zemin), transparent); }
+.m-kart .liste-grup:first-child { border-top: 0; }
 .m-kart { padding: 2px 14px; margin-top: 6px; }
 .m-satir, .menu-satir { display: flex; width: 100%; align-items: center; gap: 12px; min-height: 60px; padding: 8px 2px; border: 0; border-bottom: 1px solid var(--cizgi);
   background: transparent; color: var(--yazi); text-align: left; font: inherit; }
