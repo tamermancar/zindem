@@ -1241,6 +1241,9 @@
     function yaziKutusu(el) { return el && el.closest && el.closest('#pencere') && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search|number|email|tel)$/.test(el.type))); }
     document.addEventListener('focusin', function (e) {
       if (!yaziKutusu(e.target)) return;
+      // 1.6.3b: miktar/sayı kutusunda içerik seçili gelir; "2" iken 3'e basınca doğrudan "3" olur
+      var hedef = e.target;
+      if (hedef.classList.contains('tm-miktar') || hedef.type === 'number' || hedef.inputMode === 'decimal' || hedef.inputMode === 'numeric') setTimeout(function () { try { hedef.select(); } catch (x) { /* yok */ } }, 0);
       clearTimeout(zaman); document.body.classList.add('klavye');
       var el = e.target;
       setTimeout(function () { if (document.activeElement === el && el.scrollIntoView) el.scrollIntoView({ block: el.type === 'search' ? 'start' : 'center', behavior: 'smooth' }); }, 320);
