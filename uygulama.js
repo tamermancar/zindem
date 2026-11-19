@@ -17,7 +17,7 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.6.2';
+  var SUNUCU_SURUM = '1.6.3';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -705,6 +705,15 @@
   }
   function tamSayiOlcu(olcu) { return /adet|paket|şişe|kutu \(/.test(String(olcu)); }
   function olcuYuvarla(m, olcu) { return tamSayiOlcu(olcu) ? Math.max(1, Math.round(m)) : Math.max(0.5, Math.round(m * 2) / 2); }
+  // 1.6.3: ölçü değişince sayı korunur (3 küçük zeytin → 3 büyük zeytin); sadece gram ile ölçü arasında çevrilir
+  function olcuDegisMiktar(b, eskiO, m, yeniO, hassas) {
+    if (eskiO === 'gram' || yeniO === 'gram') {
+      var g = deger(b, eskiO, m).gram;
+      if (yeniO === 'gram') return hassas ? Math.max(1, Math.round(g)) : Math.max(5, Math.round(g / 5) * 5);
+      return olcuYuvarla(g / gramOlcu(b, yeniO), yeniO);
+    }
+    return olcuYuvarla(m, yeniO);
+  }
   // Ölçü düğmesindeki ad: aynı adlı ölçüler ayırt edilir ("adet · küçük", "adet M")
   function olcuEtiket(o) {
     if (o === 'gram') return 'gram';
@@ -1138,10 +1147,7 @@
       S.olcuAcik = S.olcuAcik === anahtar ? '' : anahtar;
     } else {
       var yeniO = b.getAttribute('data-olcu'); if (yeniO === x.olcu) return;
-      // Gram karşılığını koru: ölçü değişince aynı miktara en yakın değeri öner
-      var g = deger(x.besin, x.olcu, x.miktar).gram;
-      if (yeniO === 'gram') x.miktar = Math.max(5, Math.round(g / 5) * 5);
-      else x.miktar = olcuYuvarla(g / gramOlcu(x.besin, yeniO), yeniO);
+      x.miktar = olcuDegisMiktar(x.besin, x.olcu, x.miktar, yeniO);
       x.olcu = yeniO; S.olcuAcik = '';
     }
     if (sofraYenile) sofraYenile(id, silindi);
@@ -1228,6 +1234,23 @@
     });
   }
 
+  /* 1.6.3: Klavye açıkken (pencerede bir yazı kutusu seçili) alttaki sabit kutu/düğme yükselmez, listenin sonunda durur;
+     seçili kutu ekranın ortasına kaydırılır (arama kutusu üste, sonuçlar altında görünsün diye) */
+  (function klavyeKur() {
+    var zaman = 0;
+    function yaziKutusu(el) { return el && el.closest && el.closest('#pencere') && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search|number|email|tel)$/.test(el.type))); }
+    document.addEventListener('focusin', function (e) {
+      if (!yaziKutusu(e.target)) return;
+      clearTimeout(zaman); document.body.classList.add('klavye');
+      var el = e.target;
+      setTimeout(function () { if (document.activeElement === el && el.scrollIntoView) el.scrollIntoView({ block: el.type === 'search' ? 'start' : 'center', behavior: 'smooth' }); }, 320);
+    });
+    document.addEventListener('focusout', function (e) {
+      if (!yaziKutusu(e.target)) return;
+      zaman = setTimeout(function () { if (!yaziKutusu(document.activeElement)) document.body.classList.remove('klavye'); }, 120);
+    });
+  })();
+
   /* ---------- 1.6.2: Kaydı düzenle (Bugün'de bir kayda dokununca) ----------
    * Miktar, ölçü ve öğün değişir; besinin 100 g değeri ve kaynağı görünür; Sil. Besin listeden silinmişse sadece miktar (kaydın kendi değerinden) ve öğün. */
   function kayitDuzenle(id) {
@@ -1266,20 +1289,25 @@
       document.querySelectorAll('#pencere [data-d-olcu]').forEach(function (x) {
         x.onclick = function () {
           var yeniO = x.getAttribute('data-d-olcu'); if (yeniO === D.olcu) return;
-          var g = deger(b, D.olcu, D.miktar).gram;
-          D.miktar = yeniO === 'gram' ? Math.max(5, Math.round(g / 5) * 5) : olcuYuvarla(g / gramOlcu(b, yeniO), yeniO);
+          D.miktar = olcuDegisMiktar(b, D.olcu, D.miktar, yeniO);
           D.olcu = yeniO; pencereIcerik(icerik(), bagla, true);
         };
       });
       document.querySelectorAll('#pencere [data-d-ogun]').forEach(function (x) { x.onclick = function () { D.ogunK = x.getAttribute('data-d-ogun'); pencereIcerik(icerik(), bagla, true); }; });
       $('#d-sil').onclick = function () { pencereKapat(); kayitMiktar(id, 0); };
       $('#d-kaydet').onclick = function () {
+        var eski = { id: id, miktar: k['Miktar'], gram: k['Gram'], kcal: k['kcal'], p: k['Protein'], olcu: k['Ölçü'], ogun: k['Öğün'] };
         var d = deg(), v = { id: id, miktar: D.miktar, gram: isFinite(+d.gram) && d.gram !== '' ? yuvarla(d.gram) : '', kcal: Math.round(d.kcal),
           p: k['Protein'] === '' || k['Protein'] == null ? '' : yuvarla(d.p), olcu: D.olcu, ogun: ogunAdi(D.ogunK) };
         k['Miktar'] = v.miktar; k['Gram'] = v.gram; k['kcal'] = v.kcal; k['Protein'] = v.p; k['Ölçü'] = v.olcu; k['Öğün'] = v.ogun;
         islemEkle('ogun_guncelle', v);
         S.acikOgun = D.ogunK; S.seciliOgun = D.ogunK;
-        pencereKapat(); ciz(); bildir('✅ ' + k['Ad'] + ' güncellendi');
+        pencereKapat(); ciz();
+        bildir('✅ ' + k['Ad'] + (ogunKodu(eski.ogun) !== D.ogunK ? ' ' + ogunAdi(D.ogunK).toLocaleLowerCase('tr-TR') + ' öğününe taşındı' : ' güncellendi'), 'Geri al', function () {
+          k['Miktar'] = eski.miktar; k['Gram'] = eski.gram; k['kcal'] = eski.kcal; k['Protein'] = eski.p; k['Ölçü'] = eski.olcu; k['Öğün'] = eski.ogun;
+          islemEkle('ogun_guncelle', eski);
+          S.acikOgun = ogunKodu(eski.ogun); S.seciliOgun = S.acikOgun; ciz();
+        });
       };
     }
     pencereAc(ik('pencil') + esc(k['Ad']), icerik(), bagla);
@@ -1316,7 +1344,7 @@
       else if (b.malzemeler) { T.n = b.kisi || 1; T.satirlar = b.malzemeler.map(function (z) { return { id: z[0], miktar: z[1], olcu: 'gram', ipucu: 'Tarifte: ' + z[2] }; }); }
     }
     if (b && b.tarif) { T.tarifId = b.id; T.kaydet = !k; } // listeden açılan tarifim: son miktarlarla güncellenir
-    T.kayitAdi = b && b.tarif ? b.ad : T.ad + ' (benim)';
+    T.kayitAdi = T.ad; // 1.6.3: "(benim)" eki yok; kaydedilen tarif listelerde "Tarifim" etiketiyle görünür
     pencereAc(ik('chef-hat', 'tarif-baslik-ikon') + esc(T.ad), tarifIcerik(), tarifBagla);
   }
   function kucukAdim(veri, etiket, deger) {
@@ -1390,8 +1418,7 @@
       b.onclick = function () {
         var i = +b.getAttribute('data-tm-olcu-sec'), z = T.satirlar[i], yeni = b.getAttribute('data-olcu'), be = S.besinler[z.id];
         if (yeni !== z.olcu && isFinite(z.miktar) && z.miktar > 0) { // gram karşılığını koru
-          var g = deger(be, z.olcu, z.miktar).gram;
-          z.miktar = yeni === 'gram' ? Math.max(1, Math.round(g)) : olcuYuvarla(g / gramOlcu(be, yeni), yeni);
+          z.miktar = olcuDegisMiktar(be, z.olcu, z.miktar, yeni, true); // tarifte gram tam
         }
         z.olcu = yeni; z.ipucu = ''; T.acik = -1; tarifYenile('#tm-m-' + i);
       };

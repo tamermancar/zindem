@@ -635,3 +635,21 @@ button.sonuc.tarif-satir { color: inherit; font: inherit; cursor: pointer; }
 .duzenle-ust .deger { font-size: 15px; font-weight: 800; }
 .duzenle-bilgi { font-size: 12.5px; color: var(--soluk); margin-top: 12px; line-height: 1.4; }
 .duzenle-sil { margin: 6px auto 0; color: var(--kirmizi-yazi); }
+
+/* ===== 1.6.3 ===== */
+/* Klavye açıkken alttaki sabit kutular klavyeyle yükselmez: listenin sonunda durur */
+body.klavye .tarif-alt, body.klavye .alt-sabit, body.klavye .alt-dugme { position: static; }
+body.klavye .tarif-alt::before, body.klavye .alt-sabit::before, body.klavye .alt-dugme::before { display: none; }
+body.klavye .sepet-cubuk { display: none; }
+/* Zamanı gelmemiş öğünde kayıtlar da soluk */
+.ogun-kart.gelecek .satir .bilgi b, .ogun-kart.gelecek .satir .bilgi small { color: var(--soluk); }
+.ogun-kart.gelecek .satir .adim-deger { background: var(--soluk); }
+/* Sürgü balonu: hep beyaz yazı; okunsun diye balon aynı rengin koyu tonu (kontrast ≥ 4,9:1). Yol ve top parlak kalır. */
+.surgu-yol { --kb: #15803D; }
+.surgu-yol[data-k="dikkat"] { --kb: #A16207; --k-yazi: #fff; }
+.surgu-yol[data-k="ara"] { --kb: #C2410C; }
+.surgu-yol[data-k="doktor"] { --kb: #B91C1C; }
+.surgu-balon { background: var(--kb); color: #fff; }
+.surgu-balon::after { border-top-color: var(--kb); }
+/* Bildirim onay simgesi yeşil */
+.bildirim .b-ikon { color: #4ADE80; }
