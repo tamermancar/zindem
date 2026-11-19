@@ -105,7 +105,7 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 /* Sabit başlık: kaydırınca başlık, X ve (varsa) arama + sekmeler üstte kalır */
 .pencere-bas { position: sticky; top: -8px; z-index: 6; background: var(--kart); margin: -8px -16px 0; padding: 8px 16px 2px; }
 .pencere-bas .arama { margin: 10px 0 2px; }
-.pencere-bas .grup-cipler { padding: 6px 2px 6px; }
+.pencere-bas .grup-cipler { padding: 10px 2px 10px; }
 .pencere-bas .arama-ikon { top: 22px; }
 .pencere-bas::after { content: ''; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px; pointer-events: none;
   background: linear-gradient(var(--kart), transparent); }
@@ -171,15 +171,20 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .form-alan input:focus, .form-alan select:focus, .form-alan textarea:focus, .satir-form input:focus, .arama:focus {
   outline: none; border-color: var(--ana); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ana) 22%, transparent); }
 
-/* Çipler: görünen 36 px, şeffaf kenarla dokunma 44 px */
-.cipler { display: flex; flex-wrap: wrap; gap: 2px 6px; }
+/* Çipler (B, Tamer onayı 19 Kasım 13:40): görünen 32 px, köşe 8 px, ince kenar; seçili açık mor + ana renk kenar + tik.
+   Dokunma alanı ::after ile 44 px. */
+.cipler { display: flex; flex-wrap: wrap; gap: 8px 6px; padding: 4px 0; }
 .cip {
-  min-height: 44px; padding: 0 14px; border-radius: 999px; border: 4px solid transparent; border-left-width: 0; border-right-width: 0;
-  background: var(--yumusak); background-clip: padding-box; color: var(--yumusak-yazi); font-weight: 700; font-size: 14px;
+  position: relative; display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border-radius: 8px;
+  border: 1px solid var(--kenar); background: var(--kart); color: var(--yazi); font-size: 13.5px; font-weight: 600; white-space: nowrap;
 }
-.cip.secili { background: var(--ana); background-clip: padding-box; color: var(--ana-yazi); }
-.cip.duz { background: transparent; color: var(--soluk); font-weight: 600; }
-.grup-cipler { display: flex; gap: 6px; overflow-x: auto; padding: 10px 2px 6px; margin: 0 -2px; scrollbar-width: none;
+.cip::after { content: ''; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; }
+.cip.secili { background: var(--yumusak); border-color: var(--ana); color: var(--yumusak-yazi); font-weight: 700; padding-left: 8px; }
+.cip.secili::before { content: ''; width: 16px; height: 16px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5l10 -10'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5l10 -10'/%3E%3C/svg%3E") center / contain no-repeat; }
+.cip.duz { background: transparent; border-color: transparent; color: var(--soluk); font-weight: 600; }
+.grup-cipler { display: flex; gap: 6px; overflow-x: auto; padding: 12px 2px 10px; margin: 0 -2px; scrollbar-width: none;
   -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
 .grup-cipler::-webkit-scrollbar { display: none; }
 .grup-cipler .cip { flex: none; white-space: nowrap; }
@@ -527,7 +532,6 @@ button.sonuc.tarif-satir { color: inherit; font: inherit; cursor: pointer; }
 .tm-sil { flex: none; width: 32px; height: 44px; border: 0; background: transparent; color: var(--soluk); display: flex; align-items: center; justify-content: center; padding: 0; }
 .tm-sil .ikon { width: 16px; height: 16px; }
 .tm-olcu-secim { padding: 6px 0 10px; border-bottom: 1px solid var(--cizgi); }
-.tm-olcu-secim .cip { min-height: 40px; padding: 0 14px; font-size: 14px; }
 .tarif-alt { position: sticky; bottom: 0; z-index: 2; margin-top: 12px; background: var(--yumusak); border-radius: 18px; padding: 8px 12px 10px; }
 .tarif-alt .tarif-ust { min-height: 40px; }
 .tarif-alt .adim button { background: radial-gradient(circle, var(--kart) 0 14px, transparent 14.5px); }
@@ -548,11 +552,6 @@ button.sonuc.tarif-satir { color: inherit; font: inherit; cursor: pointer; }
 .duzenle-sil { margin: 6px auto 0; color: var(--tehlike); }
 
 /* Ağrı ve sağlık notları */
-.siddet { display: flex; align-items: center; gap: 8px; }
-.siddet input[type=range] { flex: 1; height: 44px; accent-color: var(--ana); }
-.siddet output { min-width: 40px; text-align: center; font-weight: 800; font-size: 18px; }
-.siddet .cip { width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
-.siddet .cip .ikon { width: 18px; height: 18px; }
 .not-kart { border: 2px solid var(--cizgi); border-radius: 16px; padding: 12px; margin-top: 10px; }
 .not-kart b { display: block; }
 .not-kart small { color: var(--soluk); }
