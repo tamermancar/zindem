@@ -10,3 +10,4 @@
 - `yap_ek.py`: 1.5.1'de eklenen yemekler (etli nohut, çoban salatası; yemek.com oranları) için yalnızca eksik yemekleri ekler.
 - `yap_sablon.py` (1.6): ev yemeklerine porsiyon sayısı (`kisi`), tarif şablonları (Omlet, Yağda yumurta), hazır omlet/sahanda yumurtayı listeden kaldırma (`x`). `python3 araclar/katalog/yap_sablon.py katalog.json`
 - `yap_oneri.py` (1.6.1): kahvaltı sebze puanları (domates/salatalık/sivri biber/kapya 2,5; dolmalık biber 0).
+- `yap_yemek2.py` (1.8): 18 yeni ev yemeği (tarhana, sebze yemekleri, köfteler; yemek.com oranları) ve eski 6 tarifte ölçülü yağ azaltma. Eksik çiğ malzemeleri (patates, bamya, galeta unu, su) USDA SR28'den, tarhanayı paket etiketinden ekler. Yağ azaltmaları her yemeğin `kaynak` notunda yazar. `python3 araclar/katalog/yap_yemek2.py katalog.json`

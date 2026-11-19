@@ -18,7 +18,7 @@
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
   var SUNUCU_SURUM = '1.7.1';
-  var SURUM = '1.7';
+  var SURUM = '1.8';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -338,7 +338,7 @@
     if (istenen < bas) bas = istenen.slice(0, 8) + '01';
     return Promise.all([
       fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }),
-      S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=6').then(function (r) { return r.json(); })
+      S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=7').then(function (r) { return r.json(); })
     ]).then(function (sonuc) {
       var c = sonuc[0];
       if (!c.ok) { S.hata = c.hata === 'yetkisiz' ? 'yetkisiz' : 'Sunucu hatası: ' + c.hata; return; }
@@ -1590,9 +1590,20 @@
   });
 
   /* ---------- Ağrı / sağlık notu ---------- */
-  var TURLER = ['antrenman kaynaklı', 'hastalık', 'gün içi kaza', 'diğer'];
-  var BOLGELER = ['omuz', 'diz', 'bel', 'kasık', 'boyun', 'ayak bileği', 'diğer'];
-  var TARAFLAR = ['sağ', 'sol', 'ikisi', 'yok'];
+  /* 1.8: Yeni not liste gibi: Tür · Bölge · Taraf · Şiddet satırları hep görünür; sıradaki satır seçim yapılana kadar soluk ve kapalı.
+     Seçim kutusu bizim stilde, dokununca telefonun listesi açılır. Bölge listesi türe göre; taraf bölgeye göre (çift organ: seçilir,
+     orta bölge: "genel" gelir ama değişir, bölgesiz şikâyet: "genel" kilitli). "Diğer…" ile yazılan bölge sonraki notlarda listede çıkar. */
+  var TURLER = ['antrenman kaynaklı', 'gün içi kaza', 'hastalık', 'diğer'];
+  var TUR_BOLGE = {
+    'antrenman kaynaklı': ['omuz', 'diz', 'bel', 'kasık', 'sırt', 'boyun', 'dirsek', 'el bileği', 'kalça', 'baldır', 'ayak bileği'],
+    'gün içi kaza': ['ayak bileği', 'el bileği', 'diz', 'bel', 'omuz', 'boyun', 'sırt', 'parmak'],
+    'hastalık': ['baş', 'boğaz', 'mide / karın', 'göğüs / öksürük', 'ateş / halsizlik', 'genel kas ağrısı'],
+    'diğer': ['baş', 'omuz', 'diz', 'bel', 'kasık', 'sırt', 'boyun', 'dirsek', 'el bileği', 'kalça', 'baldır', 'ayak bileği', 'parmak']
+  };
+  var CIFT = ['omuz', 'diz', 'kasık', 'dirsek', 'el bileği', 'kalça', 'baldır', 'ayak bileği', 'parmak'];
+  var TARAFSIZ = ['boğaz', 'mide / karın', 'göğüs / öksürük', 'ateş / halsizlik', 'genel kas ağrısı'];
+  function ekBolgeler() { try { var l = JSON.parse(ayar('agri_ek_bolge', '[]')); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
+  function buyukHarf(x) { return x ? x.charAt(0).toLocaleUpperCase('tr-TR') + x.slice(1) : x; }
   function gunFarki(tarih) { var p = String(tarih).slice(0, 10).split('-'); var d = new Date(+p[0], +p[1] - 1, +p[2]); return Math.floor((Date.now() - d) / 864e5); }
   function kisaTarih(t) { var p = String(t).slice(0, 10).split('-'); return +p[2] + ' ' + AYLAR[+p[1] - 1].slice(0, 3); }
   function agriAc() {
@@ -1601,7 +1612,7 @@
       h += '<div class="bolum-baslik">Açık notlar</div>';
       S.agri.forEach(function (a) {
         var s = sayi(a['Şiddet']), gun = gunFarki(a['Açılış']);
-        h += '<div class="not-kart"><b>' + esc(a['Bölge']) + (a['Taraf'] && a['Taraf'] !== 'yok' ? ' · ' + esc(a['Taraf']) : '') + '</b><small>' + esc(a['Tür']) + ' · ' + gun + ' gündür açık · ilk şiddet ' + bicim(s, 1) + (a['Son tarih'] ? ' · son ' + bicim(sayi(a['Son şiddet']), 1) + ' (' + kisaTarih(a['Son tarih']) + ')' : '') + '</small>' +
+        h += '<div class="not-kart"><b>' + esc(a['Bölge']) + (a['Taraf'] && a['Taraf'] !== 'yok' && a['Taraf'] !== 'genel' ? ' · ' + esc(a['Taraf']) : '') + '</b><small>' + esc(a['Tür']) + ' · ' + gun + ' gündür açık · ilk şiddet ' + bicim(s, 1) + (a['Son tarih'] ? ' · son ' + bicim(sayi(a['Son şiddet']), 1) + ' (' + kisaTarih(a['Son tarih']) + ')' : '') + '</small>' +
           (a['Not'] ? '<div><small>' + esc(a['Not']) + '</small></div>' : '') +
           (gun > 14 ? '<div class="uyari">⚠ 2 haftadan uzun sürüyor: bir doktora danış.</div>' : '') +
           takipAlani(a) + '</div>';
@@ -1687,35 +1698,80 @@
     });
   }
   function yeniNot() {
-    var sec = { tur: 'antrenman kaynaklı', bolge: '', taraf: 'sağ' };
-    function grup(ad, liste, alan) {
-      return '<div class="form-alan"><span class="etiket-yazi">' + ad + '</span><div class="cipler" role="group" aria-label="' + ad + '">' +
-        liste.map(function (x) { return '<button class="cip' + (sec[alan] === x ? ' secili' : '') + '" data-alan="' + alan + '" data-deger="' + esc(x) + '" aria-pressed="' + (sec[alan] === x) + '">' + esc(x) + '</button>'; }).join('') + '</div></div>';
+    var sec = { tur: '', bolge: '', taraf: '' }, siddet = 2, yaz = false, hareket = '', not = '';
+    function bolgeListe(tur) {
+      var l = (TUR_BOLGE[tur] || TUR_BOLGE['diğer']).slice();
+      ekBolgeler().forEach(function (x) { if (l.indexOf(x) < 0) l.push(x); });
+      return l;
+    }
+    function tarafListe() {
+      if (TARAFSIZ.indexOf(sec.bolge) >= 0) return ['genel'];
+      if (CIFT.indexOf(sec.bolge) >= 0) return ['sağ', 'sol', 'ikisi'];
+      if (ekBolgeler().indexOf(sec.bolge) >= 0) return ['sağ', 'sol', 'ikisi', 'genel'];
+      return ['genel', 'sağ', 'sol'];
+    }
+    function tarafVarsayilan() { // çift organ ve yazılan bölgede seçilir; diğerlerinde "genel" gelir
+      return CIFT.indexOf(sec.bolge) >= 0 || ekBolgeler().indexOf(sec.bolge) >= 0 ? '' : 'genel';
+    }
+    function satir(id, ad, liste, deger, kapali, kilit, ek) {
+      return '<div class="not-satir' + (kapali ? ' pasif' : kilit ? ' kilit' : '') + '"><label for="' + id + '">' + ad + '</label>' +
+        '<div class="secim-kutu"><select required id="' + id + '"' + (kapali || kilit ? ' disabled' : '') + '>' +
+        '<option value=""' + (deger ? '' : ' selected') + ' disabled>Seç</option>' +
+        liste.map(function (x) { return '<option value="' + esc(x) + '"' + (x === deger ? ' selected' : '') + '>' + esc(buyukHarf(x)) + '</option>'; }).join('') +
+        (ek || '') + '</select>' + ik('chevron-down') + '</div></div>';
     }
     function ciz3() {
-      pencereIcerik('<h3 style="margin:8px 0 0">Yeni not</h3>' + grup('Tür', TURLER, 'tur') + grup('Bölge', BOLGELER, 'bolge') + grup('Taraf', TARAFLAR, 'taraf') +
-        siddetAlani(2) +
-        (sec.tur === 'antrenman kaynaklı' ? '<div class="form-alan"><label for="n-hareket">Hangi hareket? (isteğe bağlı)</label><input id="n-hareket" type="text"></div>' : '') +
-        '<div class="form-alan"><label for="n-not">Kısa not (isteğe bağlı)</label><input id="n-not" type="text" placeholder="Ör. sabah tutulmayla uyandım"></div>' +
-        '<div class="alt-dugme"><button class="ana-dugme" id="n-kaydet">Kaydet</button></div>', function () {
-          siddetBagla();
-          document.querySelectorAll('[data-alan]').forEach(function (b) {
-            b.onclick = function () {
-              var s = $('#siddet').value; sec[b.getAttribute('data-alan')] = b.getAttribute('data-deger'); ciz3(); $('#siddet').value = s; $('#siddet').dispatchEvent(new Event('input'));
-            };
-          });
-          $('#n-kaydet').onclick = function () {
-            if (!sec.bolge) { bildir('Bölge seç'); return; }
-            var simdi = new Date();
-            var v = { id: kimlik('A'), acilis: S.bugun + ' ' + saatMetni(simdi), tur: sec.tur, bolge: sec.bolge, taraf: sec.taraf, siddet: +$('#siddet').value,
-              hareket: $('#n-hareket') ? $('#n-hareket').value.trim() : '', not: $('#n-not').value.trim() };
-            islemEkle('agri_ekle', v);
-            S.agri.push({ 'ID': v.id, 'Açılış': v.acilis, 'Tür': v.tur, 'Bölge': v.bolge, 'Taraf': v.taraf, 'Şiddet': v.siddet, 'Hareket': v.hareket, 'Not': v.not, 'Durum': 'açık' });
-            pencereKapat(); ciz(); bildir('✅ Not kaydedildi');
+      if ($('#siddet')) siddet = +$('#siddet').value;
+      if ($('#n-hareket')) hareket = $('#n-hareket').value;
+      if ($('#n-not')) not = $('#n-not').value;
+      var hazir = !!(sec.tur && sec.bolge && sec.taraf);
+      var h = '<h3 style="margin:8px 0 4px">Yeni not</h3><div class="not-liste">' +
+        satir('n-tur', 'Tür', TURLER, sec.tur, false) +
+        satir('n-bolge', 'Bölge', sec.tur ? bolgeListe(sec.tur) : [], yaz ? '' : sec.bolge, !sec.tur, false, '<option value="__diger">Diğer…</option>') +
+        (yaz ? '<div class="ek-bolge"><input id="n-bolge-yaz" type="text" maxlength="24" placeholder="Bölge adı, ör. ön kol" aria-label="Bölge adı"><button class="ana-dugme dar" id="n-bolge-tamam">Tamam</button></div>' : '') +
+        satir('n-taraf', 'Taraf', sec.bolge ? tarafListe() : [], sec.taraf, !sec.bolge, TARAFSIZ.indexOf(sec.bolge) >= 0) + '</div>';
+      h += '<div class="not-siddet' + (hazir ? '' : ' pasif') + '"' + (hazir ? '' : ' aria-disabled="true"') + '>' + siddetAlani(siddet) +
+        (sec.tur === 'antrenman kaynaklı' ? '<div class="form-alan"><label for="n-hareket">Hangi hareket? (isteğe bağlı)</label><input id="n-hareket" type="text" value="' + esc(hareket) + '"' + (hazir ? '' : ' disabled') + '></div>' : '') +
+        '<div class="form-alan"><label for="n-not">Kısa not (isteğe bağlı)</label><input id="n-not" type="text" value="' + esc(not) + '" placeholder="Ör. sabah tutulmayla uyandım"' + (hazir ? '' : ' disabled') + '></div></div>' +
+        '<div class="alt-dugme"><button class="ana-dugme" id="n-kaydet"' + (hazir ? '' : ' disabled') + '>Kaydet</button></div>';
+      pencereIcerik(h, function () {
+        siddetBagla();
+        if (!hazir) ['#siddet', '#s-az', '#s-art'].forEach(function (q) { $(q).disabled = true; });
+        $('#n-tur').onchange = function () {
+          sec.tur = this.value; yaz = false;
+          if (sec.bolge && bolgeListe(sec.tur).indexOf(sec.bolge) < 0) { sec.bolge = ''; sec.taraf = ''; }
+          ciz3(); odak(sec.bolge ? (sec.taraf ? '#siddet' : '#n-taraf') : '#n-bolge');
+        };
+        $('#n-bolge').onchange = function () {
+          if (this.value === '__diger') { yaz = true; sec.bolge = ''; sec.taraf = ''; ciz3(); $('#n-bolge-yaz').focus(); return; }
+          sec.bolge = this.value; sec.taraf = tarafVarsayilan(); yaz = false;
+          ciz3(); odak(sec.taraf ? '#siddet' : '#n-taraf');
+        };
+        $('#n-taraf').onchange = function () { sec.taraf = this.value; ciz3(); odak('#siddet'); };
+        if (yaz) {
+          var tamam = function () {
+            var v = $('#n-bolge-yaz').value.trim().toLocaleLowerCase('tr-TR');
+            if (!v) { bildir('Bölge adını yaz'); return; }
+            var l = ekBolgeler();
+            if (bolgeListe(sec.tur).indexOf(v) < 0) { l.push(v); ayarYaz('agri_ek_bolge', JSON.stringify(l.slice(-8))); }
+            sec.bolge = v; sec.taraf = tarafVarsayilan(); yaz = false; ciz3(); odak('#n-taraf');
           };
-        });
+          $('#n-bolge-tamam').onclick = tamam;
+          $('#n-bolge-yaz').onkeydown = function (e) { if (e.key === 'Enter') tamam(); };
+        }
+        $('#n-kaydet').onclick = function () {
+          if (!hazir) return;
+          var simdi = new Date();
+          var v = { id: kimlik('A'), acilis: S.bugun + ' ' + saatMetni(simdi), tur: sec.tur, bolge: sec.bolge, taraf: sec.taraf, siddet: +$('#siddet').value,
+            hareket: $('#n-hareket') ? $('#n-hareket').value.trim() : '', not: $('#n-not').value.trim() };
+          islemEkle('agri_ekle', v);
+          S.agri.push({ 'ID': v.id, 'Açılış': v.acilis, 'Tür': v.tur, 'Bölge': v.bolge, 'Taraf': v.taraf, 'Şiddet': v.siddet, 'Hareket': v.hareket, 'Not': v.not, 'Durum': 'açık' });
+          pencereKapat(); ciz(); bildir('✅ Not kaydedildi');
+        };
+      }, true);
     }
-    ciz3();
+    function odak(q) { var x = $(q); if (x && !x.disabled) x.focus({ preventScroll: true }); }
+    pencereIcerik('', null); ciz3();
   }
 
   /* ---------- Anahtar ekranı ---------- */

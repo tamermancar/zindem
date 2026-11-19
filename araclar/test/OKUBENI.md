@@ -8,3 +8,4 @@ Uygulama bu klasörü kullanmaz. Gizli bilgi yok; tablolar bellekte, sahte veriy
 - `yakala.py <port> <klasör> [koyu]`: 26 ekran durumunu gezer; her öğenin hesaplanan stilini (`stil.json`) ve ekran görüntüsünü kaydeder (saat sabit 19 Kasım 13:20).
 - `fark.py önce/stil.json sonra/stil.json`: iki `yakala.py` çıktısını karşılaştırır (CSS değişikliği görünümü bozdu mu?).
 - `ayar_test.py <port> <klasör>`: 1.7 Ayarlar, Mutfak, sıfırlama ve tarif akışlarını uçtan uca dener; tabloya yazılanları `/_tablo` ile kontrol eder. Her çalıştırmadan önce sunucuyu yeniden başlat (sonunda her şeyi sıfırlar).
+- `agri_test.py <port> <klasör> [koyu]` (1.8): liste düzenindeki ağrı notu (sıradaki satır soluk, türe göre bölge, bölgeye göre taraf, "Diğer…" ile yeni bölge) ve yeni ev yemeklerini dener.
