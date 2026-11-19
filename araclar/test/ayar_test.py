@@ -33,8 +33,7 @@ async def main():
         # profil menü
         await pg.click('#profil-dugme'); await foto('02-profil-menu')
         kontrol('Profil menüsü açıldı', await pg.is_visible('#pm-ayarlar'))
-        await pg.click('#pm-yedek'); await bekle(800)
-        kontrol('Yedek alındı', 'bugün' in (await pg.text_content('#pm-yedek-alt')), await pg.text_content('#pm-yedek-alt'))
+        kontrol('Profil kartında seri/gün/başlangıç', await pg.evaluate("document.querySelectorAll('.pk-bilgi').length") == 3, await pg.text_content('.pk-bilgiler'))
         await pg.click('#pm-profil'); await bekle()
         await pg.fill('#p-ad', 'Deneme Kişi'); await pg.click('#p-kaydet'); await bekle(); await bos_kuyruk()
         ay = {r[1]: r for r in tablo('Ayarlar')[1:]}
@@ -74,7 +73,11 @@ async def main():
         kontrol('Su düğmeleri 250,500,1000', str(ay.get('hizli_ekle_ml', [0, 0, ''])[2]) == '250,500,1000')
         # Ağrı
         await pg.click('#a-agri'); await foto('08-agri')
-        await pg.fill('#k-0', '4'); await pg.click('#k-kaydet'); await bekle(); await bos_kuyruk()
+        await pg.click('[data-k-art="0"]'); await pg.click('[data-k-art="0"]'); await bekle()
+        await pg.evaluate("(()=>{const r=document.querySelector('#ks-1'); r.value=2; r.dispatchEvent(new Event('input',{bubbles:true}));})()"); await bekle()
+        kontrol('Tutamaç geçemez (ara ≥ dikkat+0,5)', await pg.evaluate("document.querySelector('#ks-1').value") == '4.5', await pg.evaluate("document.querySelector('#ks-1').value"))
+        await pg.click('#k-varsayilan'); await pg.click('[data-k-art="0"]'); await pg.click('[data-k-art="0"]'); await foto('08b-agri-surgu')
+        await pg.click('#k-kaydet'); await bekle(); await bos_kuyruk()
         ay = {r[1]: r for r in tablo('Ayarlar')[1:]}
         kontrol('Dikkat eşiği 4', ay.get('agri_dikkat', [0, 0, ''])[2] == 4)
         # Tema
@@ -84,7 +87,9 @@ async def main():
         await foto('09-ayarlar-koyu')
         await pg.click('[data-tema=acik]'); await bekle(); await bos_kuyruk()
         # Veri
-        await pg.click('#a-veri'); await bekle(700); await foto('10-veri')
+        await pg.click('#a-veri'); await bekle(700)
+        await pg.click('#v-yedek'); await bekle(900); await foto('10-veri')
+        kontrol('Yedek alındı ve listede', 'son yedek' in (await pg.text_content('.yedek-kutu')), await pg.text_content('.yk-liste'))
         kontrol('Sayılar geldi', '…' not in (await pg.text_content('#pencere-ic')))
         await pg.check('[data-v-sec=hedefler]'); await pg.click('#v-secilen'); await foto('11-onay')
         kontrol('Onay düğmesi kapalı', await pg.is_disabled('#s-tamam'))

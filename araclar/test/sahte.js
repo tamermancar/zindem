@@ -25,7 +25,9 @@ const ctx = {
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, x) => { props[k] = x; } }) },
   Utilities: { formatDate: (d, tz, f) => { const p = n => String(n).padStart(2, '0'); const s = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); return f.includes('HH') ? s + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) : s; } }
 };
-ctx.yedekle = () => { ctx.__yedek = (ctx.__yedek || 0) + 1; };
+const yedekTarih = [];
+ctx.yedekle = () => { yedekTarih.push(new Date()); };
+ctx.DriveApp = { getFoldersByName: () => { let v = yedekTarih.length > 0; return { hasNext: () => v, next: () => { v = false; let i = 0; const l = yedekTarih.slice(); return { getFiles: () => ({ hasNext: () => i < l.length, next: () => { const d = l[i++]; return { isTrashed: () => false, getDateCreated: () => d }; } }) }; } }; } };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(depo, process.env.SUNUCU || 'sunucu.js'), 'utf8'), ctx);
 // Örnek veri

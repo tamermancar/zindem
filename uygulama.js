@@ -17,7 +17,7 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.7.0';
+  var SUNUCU_SURUM = '1.7.1';
   var SURUM = '1.7';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
@@ -25,7 +25,7 @@
     anahtar: '', ayar: {}, hedefler: [], besinlerim: [], tarifler: [], katalog: { besinler: [], kategoriler: [] },
     besinler: {}, kayitlar: [], gunluk: { su: 0, adim: '', uyku: '' }, agri: [], son: [], sik: {},
     gun: '', bugun: '', gunler: {}, onceki: {}, sonGiden: [], gv: {}, aralikBas: '', oncekiBas: {}, oncekiSunucu: {}, yukleniyor: false, seciliOgun: '', yuklendi: false, hata: '', gonderiliyor: false, sonYukleme: 0,
-    ekran: 'bugun', sayilar: null, sonYedek: ''
+    ekran: 'bugun', sayilar: null, sonYedek: '', yedekler: null
   };
 
   /* ---------- Yardımcılar ---------- */
@@ -261,7 +261,7 @@
   function bilgiAl() {
     return fetch(istekAdresi({ bilgi: '1' })).then(function (r) { return r.json(); }).then(function (c) {
       if (!c.ok) throw new Error(c.hata || 'hata');
-      S.sayilar = c.sayilar || null; S.sonYedek = c.sonYedek || ''; return c;
+      S.sayilar = c.sayilar || null; S.sonYedek = c.sonYedek || ''; S.yedekler = c.yedekler || []; return c;
     });
   }
   function gonder() {
@@ -1802,7 +1802,7 @@
         return '<button class="sekme-ciz' + (on ? ' secili' : '') + '" role="tab" aria-selected="' + on + '" data-m-sekme="' + x[0] + '">' + x[1] + '</button>';
       }).join('') + '</div>' +
       '<div id="m-liste">' + mutfakListe() + '</div>' +
-      '<p class="alt-not">Yemek kaydı Bugün › + Ekle\'den yapılır; arama tariflerini de bulur.</p>';
+      '';
     var a = $('#m-ara');
     a.oninput = function () { M.q = a.value; $('#m-liste').innerHTML = mutfakListe(); mutfakBagla(); };
     aramaSilBagla(a);
@@ -1870,7 +1870,7 @@
   /* ---------- 1.7: Profil menüsü (üstteki baş harflere dokununca) ---------- */
   function menuSatir(ikon, ad, alt, id, renk) {
     return '<button class="menu-satir" id="' + id + '"><span class="m-ikon' + (renk ? ' ' + renk : '') + '" aria-hidden="true">' + ik(ikon) + '</span>' +
-      '<span class="bilgi"><b>' + ad + '</b><small' + (id === 'pm-yedek' ? ' id="pm-yedek-alt"' : '') + '>' + alt + '</small></span>' + ik('chevron-right', 'kucuk-ok') + '</button>';
+      '<span class="bilgi"><b>' + ad + '</b><small>' + alt + '</small></span>' + ik('chevron-right', 'kucuk-ok') + '</button>';
   }
   function tarihYaz(t) { // "2026-11-01 03:00" → "1 Kasım 2026"; bugünse saatle
     if (!t) return '';
@@ -1878,15 +1878,22 @@
     if (p[0] === tarihMetni(new Date())) return 'bugün' + (p[1] ? ' ' + p[1] : '');
     return (+g[2]) + ' ' + AYLAR[+g[1] - 1] + ' ' + g[0];
   }
-  function yedekAlt() { return S.sonYedek ? 'Son yedek: ' + tarihYaz(S.sonYedek) : 'Drive\'a kopya al'; }
+  // Profil kartındaki alışkanlık bilgileri (İlerleme'deki ortalamalardan ayrı): seri, kayıtlı gün, başlangıç
+  function kayitOzeti() {
+    var g = Object.keys(S.gunler).filter(function (x) { return x <= S.bugun; }).sort(), seri = 0, d = S.gunler[S.bugun] ? S.bugun : gunKaydir(S.bugun, -1);
+    while (S.gunler[d]) { seri += 1; d = gunKaydir(d, -1); }
+    return { seri: seri, gun: g.length, ilk: g[0] || '' };
+  }
   function profilMenu() {
-    var ad = ayar('ad', ''), bh = basHarfler();
-    var h = '<div class="profil-kart"><span class="profil buyuk" aria-hidden="true">' + (bh ? esc(bh) : ik('user')) + '</span>' +
+    var ad = ayar('ad', ''), bh = basHarfler(), o = kayitOzeti();
+    function bilgi(ikon, deger, etiket) { return '<span class="pk-bilgi">' + ik(ikon) + '<b>' + deger + '</b><small>' + etiket + '</small></span>'; }
+    var h = '<div class="profil-kart"><div class="pk-ust"><span class="profil buyuk" aria-hidden="true">' + (bh ? esc(bh) : ik('user')) + '</span>' +
       '<span class="bilgi"><b id="pencere-baslik">' + (ad ? esc(ad) : 'Profil') + '</b><button class="metin-link" id="pm-profil">' + (ad ? 'Profili düzenle' : 'Adını ekle') + ' ›</button></span>' +
       '<button class="kapat" id="kapat" aria-label="Kapat">' + ik('x') + '</button></div>' +
+      (o.gun ? '<div class="pk-bilgiler">' + bilgi('flame', bicim(o.seri) + ' gün', 'üst üste') + bilgi('calendar-event', bicim(o.gun), 'kayıtlı gün') +
+        bilgi('flag', tarihKisa(o.ilk), 'başlangıç') + '</div>' : '') + '</div>' +
       '<div class="menu-liste">' +
-      menuSatir('settings', 'Ayarlar', 'Hedefler, öğünler, su, ağrı, görünüm', 'pm-ayarlar') +
-      menuSatir('cloud-upload', 'Verileri yedekle', yedekAlt(), 'pm-yedek') +
+      menuSatir('settings', 'Ayarlar', 'Hedefler, öğünler, su, ağrı, görünüm, veri', 'pm-ayarlar') +
       menuSatir('info-circle', 'Hakkında', 'Sürüm ' + SURUM + ' · besin kaynakları', 'pm-hakkinda') +
       menuSatir('shield-lock', 'Gizlilik', 'Verilerin kendi tablonda', 'pm-gizlilik') + '</div>' +
       '<p class="menu-not">Zindem teşhis koymaz, tedavi önermez. Kayıtlarını tutar, gösterir ve uyarır.</p>';
@@ -1895,26 +1902,10 @@
       $('#pm-ayarlar').onclick = ayarlarAc;
       $('#pm-hakkinda').onclick = hakkindaAc;
       $('#pm-gizlilik').onclick = gizlilikAc;
-      $('#pm-yedek').onclick = yedekAl;
     }, true);
-    bilgiAl().then(function () { var e = $('#pm-yedek-alt'); if (e) e.textContent = yedekAlt(); }).catch(function () { /* menü yine çalışır */ });
-  }
-  var yedekleniyor = false;
-  function yedekAl() {
-    if (yedekleniyor) return;
-    var e = $('#pm-yedek-alt'); yedekleniyor = true; if (e) e.textContent = 'Yedek alınıyor…';
-    dogrudan('yedekle').then(function () {
-      yedekleniyor = false; S.sonYedek = tarihMetni(new Date()) + ' ' + saatMetni(new Date());
-      var x = $('#pm-yedek-alt'); if (x) x.textContent = yedekAlt();
-      bildir('✅ Yedek alındı · Drive › Zindem Yedekleri');
-    }).catch(function (h) {
-      yedekleniyor = false; var x = $('#pm-yedek-alt'); if (x) x.textContent = yedekAlt();
-      bildir('⚠ Yedek alınamadı: ' + (navigator.onLine === false ? 'internet yok' : h.message));
-    });
   }
   function profilDuzenle() {
     pencereAc('Profili düzenle', '<div class="form-alan"><label for="p-ad">Adın</label><input id="p-ad" type="text" autocomplete="name" value="' + esc(ayar('ad', '')) + '" placeholder="Ad Soyad"></div>' +
-      '<p class="ipucu">Selamlamada ve baş harflerde görünür. Sadece kendi tablonda durur.</p>' +
       '<div class="alt-dugme"><button class="ana-dugme" id="p-kaydet">Kaydet</button></div>', function () {
         $('#p-kaydet').onclick = function () {
           var v = $('#p-ad').value.trim().replace(/\s+/g, ' ');
@@ -1972,6 +1963,17 @@
     return '<div class="ayar-satir"><label for="' + id + '"><b>' + etiket + '</b>' + (alt ? '<small>' + alt + '</small>' : '') + '</label>' +
       '<span class="birimli"><input id="' + id + '" type="text" inputmode="' + (adim && adim < 1 ? 'decimal' : 'numeric') + '" autocomplete="off" value="' + esc(deger) + '" placeholder="—"><small>' + birim + '</small></span></div>';
   }
+  /* 1.7.1: Tarih kutusu bizim stilimizde ("23 Kasım 2026 Pazartesi" + takvim simgesi); dokununca telefonun kendi takvimi açılır */
+  function tarihUzun(g) { var p = String(g).split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]); return d.getDate() + ' ' + AYLAR[d.getMonth()] + ' ' + d.getFullYear() + ' ' + GUNLER[d.getDay()]; }
+  function tarihKutusu(id, etiket, deger, enAz) {
+    return '<div class="form-alan"><label for="' + id + '">' + etiket + '</label><span class="tarih-kutu"><span class="tk-yazi" id="' + id + '-yazi">' + tarihUzun(deger) + '</span>' + ik('calendar') +
+      '<input id="' + id + '" type="date" min="' + enAz + '" value="' + deger + '"></span></div>';
+  }
+  function tarihKutusuBagla(id, fn) {
+    var t = $('#' + id); if (!t) return;
+    t.onchange = function () { if (t.value) { $('#' + id + '-yazi').textContent = tarihUzun(t.value); if (fn) fn(t.value); } };
+    t.onclick = function () { if (t.showPicker) try { t.showPicker(); } catch (e) { /* tarayıcı açar */ } };
+  }
   function tarihKisa(g) { var p = String(g).split('-'); return (+p[2]) + ' ' + AYLAR[+p[1] - 1] + (p[0] !== S.bugun.slice(0, 4) ? ' ' + p[0] : ''); }
   function hedefYerel(v) {
     var h = S.hedefler.filter(function (x) { return String(x['Başlangıç']) === v.baslangic && x['Tür'] === v.tur; })[0];
@@ -1981,27 +1983,30 @@
     var H = { tarih: S.bugun, baska: false, deger: {} };
     HEDEF_TUR.forEach(function (x) { var v = hedef(x[0], S.bugun); H.deger[x[0]] = v == null ? '' : String(v); });
     function icerik() {
-      var h = '<div class="bolum-baslik">Hedefler</div>' + HEDEF_TUR.map(function (x) { return sayiAlani('h-' + x[0], x[1], x[3], H.deger[x[0]], x[2]); }).join('') +
+      // Üstte şu an geçerli hedefler (kutu), altında yeni hedef formu, en altta planlanan hedefler
+      var simdi = HEDEF_TUR.map(function (x) {
+        var en = null; S.hedefler.forEach(function (y) { if (y['Tür'] === x[0] && String(y['Başlangıç']) <= S.bugun && (!en || String(y['Başlangıç']) >= String(en['Başlangıç']))) en = y; });
+        var v = en ? sayi(en['Değer']) : NaN;
+        return '<div class="hg-hucre"><small>' + x[1] + '</small><b>' + (isFinite(v) ? (x[0] === 'su_ml' ? bicim(v / 1000, 2) + ' L' : bicim(v) + ' ' + x[2]) : '—') + '</b>' +
+          (isFinite(v) ? '<small>' + tarihKisa(en['Başlangıç']) + ' itibarıyla</small>' : '<small>hedef yok</small>') + '</div>';
+      }).join('');
+      var h = '<section class="hedef-kutu" aria-label="Şu an geçerli hedefler"><div class="hk-baslik">Şu an geçerli</div><div class="hg-izgara">' + simdi + '</div></section>';
+      h += '<div class="bolum-baslik">Yeni hedef</div>' + HEDEF_TUR.map(function (x) { return sayiAlani('h-' + x[0], x[1], x[3], H.deger[x[0]], x[2]); }).join('') +
         '<div class="bolum-baslik">Ne zamandan geçerli?</div><div class="cipler">' +
         '<button class="cip' + (!H.baska ? ' secili' : '') + '" aria-pressed="' + !H.baska + '" data-h-tarih="bugun">Bugünden</button>' +
         '<button class="cip' + (H.baska ? ' secili' : '') + '" aria-pressed="' + H.baska + '" data-h-tarih="baska">Başka tarih…</button></div>' +
-        (H.baska ? '<div class="form-alan"><label for="h-tarih">Başlangıç tarihi</label><input id="h-tarih" type="date" min="' + S.bugun + '" value="' + H.tarih + '"></div>' : '') +
-        '<p class="ipucu">Eski günler kendi tarihindeki hedefe göre değerlendirilir. İleri bir tarih seçersen (ör. su artışı) hedef o gün başlar. Kutuyu boş bırakırsan o tarihten sonra hedef olmaz.</p>';
+        (H.baska ? tarihKutusu('h-tarih', 'Başlangıç tarihi', H.tarih, S.bugun) : '');
       var plan = S.hedefler.filter(function (x) { return String(x['Başlangıç']) > S.bugun; }).sort(function (a, b) { return String(a['Başlangıç']) < String(b['Başlangıç']) ? -1 : 1; });
-      var simdi = HEDEF_TUR.map(function (x) {
-        var en = null; S.hedefler.forEach(function (y) { if (y['Tür'] === x[0] && String(y['Başlangıç']) <= S.bugun && (!en || String(y['Başlangıç']) >= String(en['Başlangıç']))) en = y; });
-        return en && isFinite(sayi(en['Değer'])) ? '<li>' + x[1] + ' ' + bicim(sayi(en['Değer'])) + ' ' + x[2] + ' <small>· başlangıç ' + tarihKisa(en['Başlangıç']) + '</small></li>' : '';
-      }).join('');
-      if (plan.length) h += '<div class="bolum-baslik">Planlı</div><ul class="hedef-liste">' + plan.map(function (x) {
+      if (plan.length) h += '<div class="bolum-baslik">Planlanan hedefler</div><ul class="hedef-liste">' + plan.map(function (x) {
         var tr = HEDEF_TUR.filter(function (y) { return y[0] === x['Tür']; })[0] || [x['Tür'], x['Tür'], ''];
         var dg = isFinite(sayi(x['Değer'])) ? bicim(sayi(x['Değer'])) + ' ' + tr[2] : 'hedef yok';
         return '<li><span><b>' + tarihKisa(x['Başlangıç']) + '</b> · ' + tr[1] + ' ' + dg + '</span><button class="tm-sil" data-h-sil="' + esc(x['Başlangıç']) + '|' + esc(x['Tür']) + '" aria-label="' + tarihKisa(x['Başlangıç']) + ' ' + tr[1] + ' planını sil">' + ik('x') + '</button></li>';
       }).join('') + '</ul>';
-      if (simdi) h += '<div class="bolum-baslik">Şu an geçerli</div><ul class="hedef-liste">' + simdi + '</ul>';
       return h + '<div class="alt-dugme"><button class="ana-dugme" id="h-kaydet">Kaydet</button></div>';
     }
     function oku() { HEDEF_TUR.forEach(function (x) { var e = $('#h-' + x[0]); if (e) H.deger[x[0]] = e.value.trim(); }); var t = $('#h-tarih'); if (t && t.value) H.tarih = t.value; }
     function bagla() {
+      tarihKutusuBagla('h-tarih', function (v) { H.tarih = v; });
       document.querySelectorAll('#pencere [data-h-tarih]').forEach(function (b) {
         b.onclick = function () { oku(); H.baska = b.getAttribute('data-h-tarih') === 'baska'; if (!H.baska) H.tarih = S.bugun; pencereIcerik(icerik(), bagla, true); };
       });
@@ -2040,8 +2045,7 @@
           '<div class="oa-saat"><label class="gizli-yazi" for="o-' + o.k + '-b">' + o.ad + ' başlangıç</label><input id="o-' + o.k + '-b" type="time" value="' + x.bas + '"' + (x.acik ? '' : ' disabled') + '>' +
           '<span aria-hidden="true">–</span><label class="gizli-yazi" for="o-' + o.k + '-s">' + o.ad + ' bitiş</label><input id="o-' + o.k + '-s" type="time" value="' + x.bit + '"' + (x.acik ? '' : ' disabled') + '></div></div>';
       }).join('') +
-        '<p class="ipucu">Kapalı öğünün saatleri bir sonraki açık öğüne eklenir. Saatler dışında girilenler (ör. gece) çay saatine yazılır.</p>' +
-        '<div class="bolum-baslik">Gün başlangıcı</div><div class="ayar-satir"><label for="o-gun"><b>Yeni gün</b><small>Bu saatten önceki kayıtlar önceki güne yazılır</small></label><input id="o-gun" type="time" value="' + O.gun + '"></div>' +
+        '<div class="bolum-baslik">Gün başlangıcı</div><div class="ayar-satir"><label for="o-gun"><b>Yeni gün</b></label><input id="o-gun" type="time" value="' + O.gun + '"></div>' +
         '<button class="ikinci-dugme" id="o-varsayilan">' + ik('restore') + ' Varsayılana dön</button>' +
         '<div class="alt-dugme"><button class="ana-dugme" id="o-kaydet">Kaydet</button></div>';
     }
@@ -2091,38 +2095,68 @@
       };
     }, false, '', AYAR_GERI);
   }
+  /* 1.7.1 (Tamer'in fikri): Ağrı kademeleri tek sürgüde, 3 tutamaç. Renk aradaki çizgide; tutamaçlar sadece sınır.
+     Tutamaçlar birbirini geçemez (en az 0,5 arayla), sıra sorunu kökten yok. Her eşiğin − / + düğmesi de var. */
+  var KADEME = [['agri_dikkat', 'Dikkat', 3, 'dikkat'], ['agri_ara', 'Bölgeye ara', 5, 'ara'], ['agri_doktor', 'Doktora danış', 7, 'doktor']];
+  var KADEME_MESAJ = { normal: 'Antrenmana normal devam', dikkat: 'Zorlayan hareketleri hafiflet', ara: 'Bölgeye o gün ara ver', doktor: 'Antrenmana ara ver, doktora danış' };
   function agriAyarAc() {
-    var K = [['agri_dikkat', 'Dikkat', 3, 'dikkat'], ['agri_ara', 'Bölgeye ara', 5, 'ara'], ['agri_doktor', 'Doktora danış', 7, 'doktor']];
-    function icerik(d) {
-      return '<p class="ipucu" style="margin-top:4px">Ağrı şiddeti bu sayılara ulaşınca uyarı değişir (0–10).</p>' +
-        '<div class="kademe normal kademe-liste"><i aria-hidden="true"></i><span>0 ve üstü: ' + esc(agriKademe(0).m) + '</span></div>' +
-        K.map(function (x, i) {
-          return '<div class="ayar-satir"><label for="k-' + i + '"><b><i class="kademe-nokta ' + x[3] + '" aria-hidden="true"></i>' + x[1] + '</b><small>' + esc({ dikkat: 'Zorlayan hareketleri hafiflet', ara: 'Bölgeye o gün ara ver', doktor: 'Antrenmana ara ver, doktora danış' }[x[3]]) + '</small></label>' +
-            '<span class="birimli"><input id="k-' + i + '" type="text" inputmode="decimal" value="' + esc(bicim(d[i], 1)) + '"><small>ve üstü</small></span></div>';
-        }).join('') +
-        '<button class="ikinci-dugme" id="k-varsayilan">' + ik('restore') + ' Varsayılana dön (3 · 5 · 7)</button>' +
-        '<div class="alt-dugme"><button class="ana-dugme" id="k-kaydet">Kaydet</button></div>';
+    var d = KADEME.map(function (x) { return sayi(ayar(x[0], x[2])); });
+    function aralik(a, b) { return a === b ? bicim(a, 1) : bicim(a, 1) + '–' + bicim(b, 1); }
+    function lejant() {
+      var l = [['normal', 'Normal', 0, d[0] - 0.5]].concat(KADEME.map(function (x, i) { return [x[3], x[1], d[i], i < 2 ? d[i + 1] - 0.5 : 10]; }));
+      return l.map(function (x, i) {
+        var esik = i > 0 ? '<span class="kl-adim">' + '<button data-k-az="' + (i - 1) + '" aria-label="' + x[1] + ' eşiğini azalt">' + ik('minus') + '</button>' +
+          '<button data-k-art="' + (i - 1) + '" aria-label="' + x[1] + ' eşiğini artır">' + ik('plus') + '</button></span>' : '';
+        return '<li class="kl-' + x[0] + '"><i class="kademe-nokta ' + x[0] + '" aria-hidden="true"></i><span><b>' + aralik(x[2], x[3]) + '</b> · ' + x[1] + '<small>' + KADEME_MESAJ[x[0]] + '</small></span>' + esik + '</li>';
+      }).join('');
     }
-    function bagla() {
-      $('#k-varsayilan').onclick = function () { pencereIcerik(icerik([3, 5, 7]), bagla, true); };
+    function cizgi() {
+      var y = $('#ks-yol'); if (!y) return;
+      y.style.setProperty('--a', d[0] / 10); y.style.setProperty('--b', d[1] / 10); y.style.setProperty('--c', d[2] / 10);
+      KADEME.forEach(function (x, i) { var r = $('#ks-' + i); r.value = d[i]; r.setAttribute('aria-valuetext', x[1] + ': ' + bicim(d[i], 1) + ' ve üstü'); });
+      $('#ks-lejant').innerHTML = lejant(); lejantBagla();
+    }
+    function ayarla(i, v) {
+      var en = i ? d[i - 1] + 0.5 : 0.5, ust = i < 2 ? d[i + 1] - 0.5 : 10;
+      d[i] = Math.max(en, Math.min(ust, Math.round(v * 2) / 2)); cizgi();
+    }
+    function lejantBagla() {
+      document.querySelectorAll('#pencere [data-k-az],#pencere [data-k-art]').forEach(function (b) {
+        b.onclick = function () { var i = +(b.getAttribute('data-k-az') || b.getAttribute('data-k-art')); ayarla(i, d[i] + (b.hasAttribute('data-k-art') ? 0.5 : -0.5)); titret(); };
+      });
+    }
+    var h = '<div class="kademe-surgu"><div class="ks-yol" id="ks-yol"><span class="ks-renk"></span>' +
+      KADEME.map(function (x, i) { return '<input type="range" id="ks-' + i + '" min="0" max="10" step="0.5" value="' + d[i] + '" aria-label="' + x[1] + ' eşiği">'; }).join('') + '</div>' +
+      '<div class="ks-cetvel" aria-hidden="true">' + [0, 2, 4, 6, 8, 10].map(function (n) { return '<span>' + n + '</span>'; }).join('') + '</div></div>' +
+      '<ul class="kademe-lejant" id="ks-lejant" aria-live="polite"></ul>' +
+      '<button class="ikinci-dugme" id="k-varsayilan">' + ik('restore') + ' Varsayılana dön (3 · 5 · 7)</button>' +
+      '<div class="alt-dugme"><button class="ana-dugme" id="k-kaydet">Kaydet</button></div>';
+    pencereAc(ik('bandage', 'adim-renk') + 'Ağrı kademeleri', h, function () {
+      KADEME.forEach(function (x, i) { $('#ks-' + i).oninput = function () { ayarla(i, +this.value); }; });
+      $('#k-varsayilan').onclick = function () { d = [3, 5, 7]; cizgi(); };
       $('#k-kaydet').onclick = function () {
-        var d = K.map(function (x, i) { return Math.round(sayi($('#k-' + i).value) * 2) / 2; });
-        if (d.some(function (v) { return !isFinite(v) || v <= 0 || v > 10; })) { bildir('⚠ Sayılar 0,5 ile 10 arası olmalı'); return; }
-        if (!(d[0] < d[1] && d[1] < d[2])) { bildir('⚠ Sıra küçükten büyüğe olmalı: dikkat < ara < doktor'); return; }
-        K.forEach(function (x, i) { if (d[i] !== sayi(ayar(x[0], x[2]))) ayarYaz(x[0], d[i]); });
+        KADEME.forEach(function (x, i) { if (d[i] !== sayi(ayar(x[0], x[2]))) ayarYaz(x[0], d[i]); });
         ayarlarAc(); bildir('✅ Ağrı kademeleri kaydedildi');
       };
-    }
-    pencereAc(ik('bandage', 'adim-renk') + 'Ağrı kademeleri', icerik(K.map(function (x) { return sayi(ayar(x[0], x[2])); })), bagla, false, '', AYAR_GERI);
+      cizgi();
+    }, false, '', AYAR_GERI);
   }
   /* Veri ve hesap: grup grup sıfırlama (önce Drive yedeği) */
   var SIFIR_LISTE = [['besinlerim', 'Besinlerim', 'besin'], ['tarifler', 'Tariflerim', 'tarif'], ['kayitlar', 'Öğün kayıtları, su, adım, uyku', 'öğün kaydı'],
     ['olculer', 'Kilo ve bel ölçüleri', 'ölçüm'], ['agri', 'Ağrı notları', 'not'], ['hedefler', 'Hedefler', 'hedef'], ['ayarlar', 'Uygulama ayarları (varsayılana döner)', 'ayar']];
+  var yedekleniyor = false;
   function veriAc() {
     var secili = {};
     function sayiYaz(g) { return S.sayilar ? bicim(S.sayilar[g] || 0) + ' ' + SIFIR_LISTE.filter(function (x) { return x[0] === g; })[0][2] : '…'; }
+    function yedekHtml() {
+      var l = S.yedekler;
+      return '<div class="bolum-baslik">Yedek</div><div class="yedek-kutu"><p>Tablonun bir kopyası Google Drive\'da "Zindem Yedekleri" klasörüne alınır. Her ayın 1\'inde kendiliğinden de alınır.</p>' +
+        (l === null ? '<p class="yk-liste">Yedekler yükleniyor…</p>' : l.length ? '<ul class="yk-liste">' + l.map(function (t, i) { return '<li>' + ik('cloud-upload') + '<span>' + tarihYaz(t) + (i === 0 ? ' <small>· son yedek</small>' : '') + '</span></li>'; }).join('') + '</ul>'
+          : '<p class="yk-liste">Henüz yedek yok.</p>') +
+        '<button class="ikinci-dugme" id="v-yedek"' + (yedekleniyor ? ' disabled' : '') + '>' + ik('cloud-upload') + (yedekleniyor ? ' Yedek alınıyor…' : ' Şimdi yedekle') + '</button></div>';
+    }
     function icerik() {
-      return '<div class="bolum-baslik">Verileri sıfırla</div><p class="ipucu" style="margin-top:2px">Seçtiklerin silinir. Hemen önce Drive\'a yedek kopya alınır.</p>' +
+      return yedekHtml() + '<div class="bolum-baslik">Verileri sıfırla</div>' +
         SIFIR_LISTE.map(function (x) {
           return '<label class="secim-satir"><input type="checkbox" data-v-sec="' + x[0] + '"' + (secili[x[0]] ? ' checked' : '') + '><span>' + x[1] + '</span><small>' + sayiYaz(x[0]) + '</small></label>';
         }).join('') +
@@ -2131,6 +2165,16 @@
         '<div class="bolum-baslik">Hesap</div><div class="menu-satir pasif"><span class="m-ikon" aria-hidden="true">' + ik('user-x') + '</span><span class="bilgi"><b>Hesabı sil</b><small>Mağaza sürümünde gelecek</small></span></div>';
     }
     function bagla() {
+      $('#v-yedek').onclick = function () {
+        if (yedekleniyor) return;
+        yedekleniyor = true; pencereIcerik(icerik(), bagla, true);
+        dogrudan('yedekle').then(function () { return bilgiAl(); }).then(function () {
+          yedekleniyor = false; if ($('#v-yedek')) pencereIcerik(icerik(), bagla, true); bildir('✅ Yedek alındı');
+        }).catch(function (h) {
+          yedekleniyor = false; if ($('#v-yedek')) pencereIcerik(icerik(), bagla, true);
+          bildir('⚠ Yedek alınamadı: ' + (navigator.onLine === false ? 'internet yok' : h.message));
+        });
+      };
       document.querySelectorAll('#pencere [data-v-sec]').forEach(function (c) { c.onchange = function () { secili[c.getAttribute('data-v-sec')] = c.checked; }; });
       $('#v-secilen').onclick = function () {
         var g = SIFIR_LISTE.map(function (x) { return x[0]; }).filter(function (k) { return secili[k]; });

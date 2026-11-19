@@ -633,8 +633,16 @@ button.sonuc.tarif-satir { color: inherit; font: inherit; cursor: pointer; }
 .menu-satir.pasif b { color: var(--soluk); }
 .menu-satir.pasif .m-ikon { background: var(--zemin); color: var(--soluk); }
 /* Profil menüsü */
-.profil-kart { display: flex; align-items: center; gap: 12px; background: var(--yumusak); border-radius: 18px; padding: 12px; margin-top: 2px; }
+.profil-kart { background: var(--yumusak); border-radius: 20px; padding: 12px; margin-top: 2px; }
+.pk-ust { display: flex; align-items: center; gap: 12px; }
 .profil-kart .bilgi { flex: 1; min-width: 0; }
+/* Profil kartı: seri · kayıtlı gün · başlangıç */
+.pk-bilgiler { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.pk-bilgi { background: var(--kart); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pk-bilgi .ikon { width: 18px; height: 18px; color: var(--ana); margin-bottom: 2px; }
+.pk-bilgi:first-child .ikon { color: var(--turuncu); }
+.pk-bilgi b { font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-bilgi small { font-size: 11.5px; color: var(--soluk); font-weight: 600; }
 .profil-kart b { display: block; font-size: 17px; font-weight: 800; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profil.buyuk { width: 52px; height: 52px; font-size: 18px; }
 .metin-link { border: 0; background: transparent; padding: 0; min-height: 32px; color: var(--yumusak-yazi); font-size: 13px; font-weight: 700; }
@@ -680,7 +688,7 @@ button.sonuc.tarif-satir { color: inherit; font: inherit; cursor: pointer; }
 .hedef-liste li > span { flex: 1; }
 .hedef-liste small { color: var(--soluk); }
 .kademe-nokta { width: 12px; height: 12px; border-radius: 50%; flex: none; }
-.kademe-nokta.dikkat { background: var(--sari); } .kademe-nokta.ara { background: var(--turuncu); } .kademe-nokta.doktor { background: var(--kirmizi); }
+.kademe-nokta.normal { background: var(--yesil); } .kademe-nokta.dikkat { background: var(--sari); } .kademe-nokta.ara { background: var(--turuncu); } .kademe-nokta.doktor { background: var(--kirmizi); }
 .kademe-liste { height: auto; min-height: 44px; margin-top: 8px; font-weight: 600; font-size: 13px; }
 /* Veri ve hesap */
 .secim-satir { display: flex; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid var(--cizgi); }
@@ -699,6 +707,51 @@ html[data-tema="koyu"] .ana-dugme.tehlike { color: var(--zemin); }
 .metin-blok p { margin: 10px 0; }
 .metin-blok ul { margin: 8px 0; padding-left: 20px; }
 .metin-blok li { margin: 8px 0; }
+
+/* 1.7.1: Hedefler › şu an geçerli kutusu */
+.hedef-kutu { background: var(--yumusak); border-radius: 18px; padding: 10px 12px 12px; margin-top: 4px; }
+.hk-baslik { font-size: 12px; font-weight: 800; color: var(--yumusak-yazi); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.hg-izgara { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.hg-hucre { background: var(--kart); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
+.hg-hucre small { font-size: 11.5px; color: var(--soluk); font-weight: 600; }
+.hg-hucre b { font-size: 16px; font-weight: 800; white-space: nowrap; }
+/* Tarih kutusu: bizim kutu stili; içindeki görünmez tarih girişi telefonun takvimini açar */
+.tarih-kutu { position: relative; display: flex; align-items: center; gap: 8px; min-height: 44px; border-radius: 12px; border: 1.5px solid var(--halka); background: var(--kart); padding: 0 12px; }
+.tarih-kutu .tk-yazi { flex: 1; font-size: 15px; font-weight: 700; }
+.tarih-kutu .ikon { width: 20px; height: 20px; color: var(--ana); }
+.tarih-kutu input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; margin: 0; cursor: pointer; }
+.tarih-kutu:focus-within { border-color: var(--ana); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ana) 22%, transparent); }
+/* Veri ve hesap › Yedek */
+.yedek-kutu { background: var(--yumusak); border-radius: 18px; padding: 10px 12px 12px; margin-top: 4px; }
+.yedek-kutu p { margin: 0; font-size: 13px; color: var(--yazi); line-height: 1.4; }
+.yedek-kutu .ikinci-dugme { background: var(--kart); border-color: var(--kart); margin-top: 10px; }
+.yk-liste { list-style: none; margin: 8px 0 0 !important; padding: 0; font-size: 13.5px; color: var(--soluk) !important; }
+.yk-liste li { display: flex; align-items: center; gap: 8px; min-height: 30px; color: var(--yazi); }
+.yk-liste li .ikon { width: 16px; height: 16px; color: var(--yumusak-yazi); }
+.yk-liste small { color: var(--soluk); }
+/* Ağrı kademeleri: üç tutamaçlı sürgü (renk çizgide, tutamaç sadece sınır) */
+.kademe-surgu { padding: 18px 13px 0; }
+.ks-yol { position: relative; height: 44px; --a: .3; --b: .5; --c: .7; }
+.ks-renk { position: absolute; left: 0; right: 0; top: 18px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--yesil) 0 calc(var(--a) * 100%), var(--sari) 0 calc(var(--b) * 100%), var(--turuncu) 0 calc(var(--c) * 100%), var(--kirmizi) 0); }
+.ks-yol input[type=range] { position: absolute; left: -13px; right: -13px; top: 0; width: calc(100% + 26px); height: 44px; margin: 0; background: transparent; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.ks-yol input[type=range]::-webkit-slider-runnable-track { background: transparent; height: 44px; }
+.ks-yol input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 26px; height: 26px; margin-top: 9px; border-radius: 50%; background: var(--kart);
+  border: 3px solid var(--yazi); box-shadow: 0 1px 4px color-mix(in srgb, var(--yazi) 30%, transparent); cursor: grab; }
+.ks-yol input[type=range]::-moz-range-thumb { pointer-events: auto; width: 20px; height: 20px; border-radius: 50%; background: var(--kart); border: 3px solid var(--yazi); cursor: grab; }
+.ks-yol input[type=range]::-moz-range-track { background: transparent; }
+.ks-yol input[type=range]:focus-visible { outline: none; }
+.ks-yol input[type=range]:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--ana); outline-offset: 2px; }
+.ks-cetvel { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--soluk); font-weight: 600; margin: 0 -4px; }
+.kademe-lejant { list-style: none; margin: 14px 0 0; padding: 0; }
+.kademe-lejant li { display: flex; align-items: center; gap: 10px; min-height: 52px; border-bottom: 1px solid var(--cizgi); }
+.kademe-lejant li > span:not(.kl-adim) { flex: 1; min-width: 0; font-size: 14px; }
+.kademe-lejant b { font-weight: 800; }
+.kademe-lejant small { display: block; font-size: 12.5px; color: var(--soluk); }
+.kl-adim { display: flex; gap: 2px; flex: none; }
+.kl-adim button { width: 40px; height: 44px; border: 0; padding: 0; color: var(--ana); display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle, var(--yumusak) 0 14px, transparent 14.5px); }
+.kl-adim button .ikon { width: 16px; height: 16px; stroke-width: 2.4; }
 
 /* ===== 7. Durumlar ===== */
 /* Klavye açıkken alttaki sabit kutular klavyeyle yükselmez: listenin sonunda durur */

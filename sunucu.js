@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.7.0';
+var SUNUCU_SURUM = '1.7.1';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -121,15 +121,16 @@ function sayilar_() {
   o.ayarlar = ayarSatirlari_(false).length;
   return o;
 }
-function sonYedek_() { // Drive'daki yedek klasöründe en yeni kopyanın tarihi
+function yedekler_() { // Drive'daki yedek klasöründeki son 5 kopya (en yeni önce)
   try {
-    if (typeof DriveApp === 'undefined') return '';
+    if (typeof DriveApp === 'undefined') return [];
     var it = DriveApp.getFoldersByName(typeof YEDEK_KLASORU !== 'undefined' ? YEDEK_KLASORU : 'Zindem Yedekleri');
-    if (!it.hasNext()) return '';
-    var f = it.next().getFiles(), en = null;
-    while (f.hasNext()) { var d = f.next().getDateCreated(); if (!en || d > en) en = d; }
-    return en ? Utilities.formatDate(en, SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm') : '';
-  } catch (x) { return ''; }
+    if (!it.hasNext()) return [];
+    var f = it.next().getFiles(), l = [], tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+    while (f.hasNext()) { var x = f.next(); if (!x.isTrashed()) l.push(x.getDateCreated()); }
+    l.sort(function (a, b) { return b - a; });
+    return l.slice(0, 5).map(function (d) { return Utilities.formatDate(d, tz, 'yyyy-MM-dd HH:mm'); });
+  } catch (x) { return []; }
 }
 function yedekAl_() {
   if (typeof yedekle !== 'function') throw new Error('Yedek alınamadı: Kod.gs içinde yedekle bulunamadı.');
@@ -210,7 +211,7 @@ function tarifMalzemeSil_(id) {
  * p.sade = '1': sadece gün verileri (eski bir aya geçerken) */
 function sunucuOku(p) {
   semaGuncelle_();
-  if (p.bilgi === '1') return { ok: true, surum: SUNUCU_SURUM, sayilar: sayilar_(), sonYedek: sonYedek_() }; // 1.7: Ayarlar › Veri
+  if (p.bilgi === '1') { var y = yedekler_(); return { ok: true, surum: SUNUCU_SURUM, sayilar: sayilar_(), yedekler: y, sonYedek: y[0] || '' }; } // 1.7: Ayarlar › Veri
   var gun = p.gun || '', bas = p.bas || gun, bitis = p.bitis || gun;
   if (bas > bitis) { var t = bas; bas = bitis; bitis = t; }
   var ogunler = oku_('Öğün Kayıtları');
