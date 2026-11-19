@@ -8,3 +8,4 @@
 - `yap_yemek.py`: ev yemekleri; oranlar nefisyemektarifleri.com, malzeme değerleri USDA, 1 porsiyon = tarifin kişi sayısının ortası.
 - `yap.py`: eski katalogun üstüne ekleyip `katalog.json`u yazar.
 - `yap_ek.py`: 1.5.1'de eklenen yemekler (etli nohut, çoban salatası; yemek.com oranları) için yalnızca eksik yemekleri ekler.
+- `yap_sablon.py` (1.6): ev yemeklerine porsiyon sayısı (`kisi`), tarif şablonları (Omlet, Yağda yumurta), hazır omlet/sahanda yumurtayı listeden kaldırma (`x`). `python3 araclar/katalog/yap_sablon.py katalog.json`

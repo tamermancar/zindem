@@ -3,19 +3,22 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.4.0';
+var SUNUCU_SURUM = '1.6.0';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
   'Hedefler': ['Başlangıç', 'Tür', 'Değer', 'Not'],
   'Besinlerim': ['ID', 'Ad', 'Kategori', 'Katalog ID', 'Temel', 'kcal', 'Protein', 'Ölçüler', 'Kaynak', 'Not', 'Öğünler'],
-  'Öğün Kayıtları': ['ID', 'Gün', 'Saat', 'Öğün', 'Besin ID', 'Ad', 'Miktar', 'Ölçü', 'Gram', 'kcal', 'Protein', 'Kayıt zamanı'],
+  'Öğün Kayıtları': ['ID', 'Gün', 'Saat', 'Öğün', 'Besin ID', 'Ad', 'Miktar', 'Ölçü', 'Gram', 'kcal', 'Protein', 'Kayıt zamanı', 'Malzemeler'],
+  // 1.6: kaydedilen tarifler ("Benim tariflerim"). Porsiyon: tarifin kaç porsiyon çıkardığı.
+  'Tarifler': ['ID', 'Ad', 'Porsiyon', 'Öğün', 'Güncelleme'],
+  'Tarif Malzemeleri': ['Tarif ID', 'Sıra', 'Besin ID', 'Ad', 'Miktar', 'Ölçü', 'Gram'],
   'Günlük': ['Gün', 'Su (ml)', 'Adım', 'Uyku'],
   'Ölçüler': ['Tarih', 'Tür', 'Değer', 'Birim', 'Not'],
   'Ağrı Notları': ['ID', 'Açılış', 'Tür', 'Bölge', 'Taraf', 'Şiddet', 'Hareket', 'Not', 'Durum', 'Kapanış'],
   'Ağrı Takibi': ['Not ID', 'Tarih', 'Şiddet', 'Cevap', 'Not']
 };
-var METIN_SUTUNLAR = ['ID', 'Gün', 'Tarih', 'Başlangıç', 'Açılış', 'Kapanış', 'Saat', 'Kayıt zamanı', 'Not ID', 'Besin ID', 'Katalog ID', 'Uyku'];
+var METIN_SUTUNLAR = ['ID', 'Gün', 'Tarih', 'Başlangıç', 'Açılış', 'Kapanış', 'Saat', 'Kayıt zamanı', 'Not ID', 'Besin ID', 'Katalog ID', 'Uyku', 'Tarif ID', 'Güncelleme', 'Malzemeler'];
 
 /* ---------- Tablo yapısı: eksik sayfa ve sütunları tamamlar (her sürümde bir kez) ---------- */
 function semaGuncelle_() {
@@ -131,6 +134,13 @@ function hucreYaz_(ad, satir, sutun, deger) {
   c.setValue(deger_(deger));
 }
 
+function tarifMalzemeSil_(id) {
+  var sh = sayfa_('Tarif Malzemeleri'); if (!sh || sh.getLastRow() < 2) return;
+  var col = basliklar_('Tarif Malzemeleri').indexOf('Tarif ID') + 1;
+  var v = sh.getRange(2, col, sh.getLastRow() - 1, 1).getValues();
+  for (var i = v.length - 1; i >= 0; i--) if (String(v[i][0]) === String(id)) sh.deleteRow(i + 2);
+}
+
 /* ---------- Okuma ----------
  * p.gun: ekranda açılacak gün · p.bas / p.bitis: bu aralıktaki bütün günler tek seferde gelir (1.3.1)
  * p.sade = '1': sadece gün verileri (eski bir aya geçerken) */
@@ -179,6 +189,7 @@ function sunucuOku(p) {
     ok: true,
     surum: SUNUCU_SURUM,
     ayarlar: oku_('Ayarlar'),
+    tarifler: tarifleriOku_(),
     hedefler: oku_('Hedefler'),
     besinlerim: oku_('Besinlerim'),
     bugun: ogunler.filter(function (o) { return o['Gün'] === gun; }),
@@ -192,6 +203,17 @@ function sunucuOku(p) {
   };
 }
 /* Her öğün için, verilen günden önceki son kayıtlı gün ("Dünkü kahvaltıyı ekle") */
+function tarifleriOku_() {
+  var malz = {};
+  oku_('Tarif Malzemeleri').forEach(function (m) {
+    var id = String(m['Tarif ID']); (malz[id] = malz[id] || []).push(m);
+  });
+  return oku_('Tarifler').map(function (t) {
+    var l = (malz[String(t['ID'])] || []).sort(function (a, b) { return (+a['Sıra'] || 0) - (+b['Sıra'] || 0); });
+    return { id: t['ID'], ad: t['Ad'], porsiyon: t['Porsiyon'], ogun: t['Öğün'],
+      malzemeler: l.map(function (m) { return { id: m['Besin ID'], ad: m['Ad'], miktar: m['Miktar'], olcu: m['Ölçü'] }; }) };
+  });
+}
 function oncekiOgun_(ogunler, gun) {
   var onceki = {};
   for (var j = ogunler.length - 1; j >= 0; j--) {
@@ -199,7 +221,7 @@ function oncekiOgun_(ogunler, gun) {
     if (!ad || !g || g >= gun || !x['Besin ID']) continue;
     if (onceki[ad] && onceki[ad].gun > g) continue;
     if (!onceki[ad] || onceki[ad].gun < g) onceki[ad] = { gun: g, kayitlar: [] };
-    onceki[ad].kayitlar.unshift({ besinId: x['Besin ID'], ad: x['Ad'], miktar: x['Miktar'], olcu: x['Ölçü'] });
+    onceki[ad].kayitlar.unshift({ besinId: x['Besin ID'], ad: x['Ad'], miktar: x['Miktar'], olcu: x['Ölçü'], kcal: x['kcal'], p: x['Protein'], gram: x['Gram'], malzemeler: x['Malzemeler'] || '' });
   }
   return onceki;
 }
@@ -227,7 +249,8 @@ function islemYap_(is) {
       satirEkle_('Öğün Kayıtları', {
         'ID': v.id, 'Gün': v.gun, 'Saat': v.saat, 'Öğün': v.ogun, 'Besin ID': v.besinId, 'Ad': v.ad,
         'Miktar': v.miktar, 'Ölçü': v.olcu, 'Gram': v.gram, 'kcal': v.kcal, 'Protein': v.p,
-        'Kayıt zamanı': Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm')
+        'Kayıt zamanı': Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm'),
+        'Malzemeler': v.malzemeler || ''
       });
       return;
     case 'ogun_guncelle':
@@ -236,6 +259,9 @@ function islemYap_(is) {
       ['Miktar', 'Gram', 'kcal', 'Protein'].forEach(function (s, i) {
         hucreYaz_('Öğün Kayıtları', r, s, [v.miktar, v.gram, v.kcal, v.p][i]);
       });
+      // 1.6: tarif penceresinden düzeltilen kayıt
+      if (v.malzemeler !== undefined) hucreYaz_('Öğün Kayıtları', r, 'Malzemeler', v.malzemeler);
+      if (v.besinId) { hucreYaz_('Öğün Kayıtları', r, 'Besin ID', v.besinId); hucreYaz_('Öğün Kayıtları', r, 'Ad', v.ad); }
       return;
     case 'ogun_sil':
       var rs = satirBul_('Öğün Kayıtları', 'ID', v.id);
@@ -254,6 +280,21 @@ function islemYap_(is) {
         'ID': v.id, 'Ad': v.ad, 'Kategori': v.kategori, 'Katalog ID': v.katalogId || '', 'Temel': v.temel,
         'kcal': v.kcal, 'Protein': v.p, 'Ölçüler': v.olculer || '', 'Kaynak': v.kaynak || 'Elle eklendi', 'Not': v.not || '', 'Öğünler': v.ogunler || ''
       });
+      return;
+    case 'tarif_kaydet': // varsa günceller: malzeme satırları silinip yeniden yazılır
+      var zaman = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm');
+      var rt = satirBul_('Tarifler', 'ID', v.id);
+      if (rt) { hucreYaz_('Tarifler', rt, 'Ad', v.ad); hucreYaz_('Tarifler', rt, 'Porsiyon', v.porsiyon); hucreYaz_('Tarifler', rt, 'Öğün', v.ogun); hucreYaz_('Tarifler', rt, 'Güncelleme', zaman); }
+      else satirEkle_('Tarifler', { 'ID': v.id, 'Ad': v.ad, 'Porsiyon': v.porsiyon, 'Öğün': v.ogun, 'Güncelleme': zaman });
+      tarifMalzemeSil_(v.id);
+      (v.malzemeler || []).forEach(function (m, i) {
+        satirEkle_('Tarif Malzemeleri', { 'Tarif ID': v.id, 'Sıra': i + 1, 'Besin ID': m.id, 'Ad': m.ad, 'Miktar': m.miktar, 'Ölçü': m.olcu, 'Gram': m.gram });
+      });
+      return;
+    case 'tarif_sil':
+      var rts = satirBul_('Tarifler', 'ID', v.id);
+      if (rts) sayfa_('Tarifler').deleteRow(rts);
+      tarifMalzemeSil_(v.id);
       return;
     case 'agri_ekle':
       if (satirBul_('Ağrı Notları', 'ID', v.id)) return;
