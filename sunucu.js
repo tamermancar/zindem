@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.6.0';
+var SUNUCU_SURUM = '1.6.2';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -262,6 +262,9 @@ function islemYap_(is) {
       // 1.6: tarif penceresinden düzeltilen kayıt
       if (v.malzemeler !== undefined) hucreYaz_('Öğün Kayıtları', r, 'Malzemeler', v.malzemeler);
       if (v.besinId) { hucreYaz_('Öğün Kayıtları', r, 'Besin ID', v.besinId); hucreYaz_('Öğün Kayıtları', r, 'Ad', v.ad); }
+      // 1.6.2: Kaydı düzenle: ölçü ve öğün değişebilir
+      if (v.olcu) hucreYaz_('Öğün Kayıtları', r, 'Ölçü', v.olcu);
+      if (v.ogun) hucreYaz_('Öğün Kayıtları', r, 'Öğün', v.ogun);
       return;
     case 'ogun_sil':
       var rs = satirBul_('Öğün Kayıtları', 'ID', v.id);
