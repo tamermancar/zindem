@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.6.2';
+var SUNUCU_SURUM = '1.7.0';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -40,6 +40,7 @@ function semaGuncelle_() {
     });
   });
   if (!pr.getProperty('GRUP_GOCU')) { grupGocu_(); pr.setProperty('GRUP_GOCU', '1'); }
+  ayarGrupDoldur_(); // 1.7: Ayarlar › Grup ve Açıklama sütunları (boş olanlar doldurulur)
   pr.setProperty('SEMA_SURUM', SUNUCU_SURUM);
 }
 
@@ -77,6 +78,62 @@ function grupGocu_() {
   var degisti = false;
   v.forEach(function (r) { var y = grupBul_(r[ik], r[ia]); if (y !== r[ik]) { r[ik] = y; degisti = true; } });
   if (degisti) sh.getRange(2, ik + 1, v.length, 1).setValues(v.map(function (r) { return [r[ik]]; }));
+}
+
+/* ---------- 1.7: Ayarlar sayfası grupları (sıfırlama grup grup çalışır) ---------- */
+var AYAR_BILGI = {
+  ad: ['profil', 'Selamlamada görünen ad'],
+  gun_baslangic: ['ogunler', 'Yeni günün başladığı saat (öncesi önceki güne yazılır)'],
+  kahvalti: ['ogunler', 'Kahvaltı saatleri'], ogle: ['ogunler', 'Öğle saatleri'], aksam: ['ogunler', 'Akşam saatleri'], cay: ['ogunler', 'Çay saati saatleri'],
+  kahvalti_acik: ['ogunler', 'Kahvaltı açık mı (evet/hayır)'], ogle_acik: ['ogunler', 'Öğle açık mı'], aksam_acik: ['ogunler', 'Akşam açık mı'], cay_acik: ['ogunler', 'Çay saati açık mı'],
+  hizli_ekle_ml: ['su', 'Su hızlı ekleme miktarları (ml, virgülle; ilki 1 bardak)'], duzeltme_ml: ['su', 'Su düzeltme adımı (ml)'],
+  agri_dikkat: ['agri', 'Bu şiddetten itibaren: dikkat'], agri_ara: ['agri', 'Bu şiddetten itibaren: bölgeye ara'], agri_doktor: ['agri', 'Bu şiddetten itibaren: doktora danış'],
+  tema: ['gorunum', 'Tema: acik / koyu / telefon'], ipucu_sil: ['ipucu', 'Sola çekip sil ipucu gösterildi']
+};
+function ayarGrupDoldur_() {
+  var sh = sayfa_('Ayarlar'); if (!sh || sh.getLastRow() < 2) return;
+  var b = basliklar_('Ayarlar'), ig = b.indexOf('Grup'), ia = b.indexOf('Anahtar'), ic = b.indexOf('Açıklama');
+  if (ig < 0 || ia < 0) return;
+  var v = sh.getRange(2, 1, sh.getLastRow() - 1, b.length).getValues(), degisti = false;
+  v.forEach(function (r) {
+    var bil = AYAR_BILGI[String(r[ia])]; if (!bil) return;
+    if (!r[ig]) { r[ig] = bil[0]; degisti = true; }
+    if (ic >= 0 && !r[ic]) { r[ic] = bil[1]; degisti = true; }
+  });
+  if (degisti) sh.getRange(2, 1, v.length, b.length).setValues(v);
+}
+/* Sıfırlama grupları → sayfalar */
+var SIFIR_GRUP = {
+  besinlerim: ['Besinlerim'], tarifler: ['Tarifler', 'Tarif Malzemeleri'], kayitlar: ['Öğün Kayıtları', 'Günlük'],
+  olculer: ['Ölçüler'], agri: ['Ağrı Notları', 'Ağrı Takibi'], hedefler: ['Hedefler']
+};
+function satirSayisi_(ad) { var sh = sayfa_(ad); return sh ? Math.max(0, sh.getLastRow() - 1) : 0; }
+function ayarSatirlari_(profil) { // Ayarlar sayfasında satır numaraları: profil = sadece ad satırı, değilse ad dışındakiler
+  var sh = sayfa_('Ayarlar'); if (!sh || sh.getLastRow() < 2) return [];
+  var ia = basliklar_('Ayarlar').indexOf('Anahtar') + 1;
+  var v = sh.getRange(2, ia, sh.getLastRow() - 1, 1).getValues(), l = [];
+  v.forEach(function (r, i) { var ad = String(r[0]) === 'ad'; if (String(r[0]) && (profil ? ad : !ad)) l.push(i + 2); });
+  return l;
+}
+function sayilar_() {
+  var o = {};
+  Object.keys(SIFIR_GRUP).forEach(function (g) { o[g] = satirSayisi_(SIFIR_GRUP[g][0]); });
+  o.ayarlar = ayarSatirlari_(false).length;
+  return o;
+}
+function sonYedek_() { // Drive'daki yedek klasöründe en yeni kopyanın tarihi
+  try {
+    if (typeof DriveApp === 'undefined') return '';
+    var it = DriveApp.getFoldersByName(typeof YEDEK_KLASORU !== 'undefined' ? YEDEK_KLASORU : 'Zindem Yedekleri');
+    if (!it.hasNext()) return '';
+    var f = it.next().getFiles(), en = null;
+    while (f.hasNext()) { var d = f.next().getDateCreated(); if (!en || d > en) en = d; }
+    return en ? Utilities.formatDate(en, SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm') : '';
+  } catch (x) { return ''; }
+}
+function yedekAl_() {
+  if (typeof yedekle !== 'function') throw new Error('Yedek alınamadı: Kod.gs içinde yedekle bulunamadı.');
+  yedekle();
 }
 
 /* ---------- Yardımcılar ---------- */
@@ -134,6 +191,13 @@ function hucreYaz_(ad, satir, sutun, deger) {
   c.setValue(deger_(deger));
 }
 
+function hedefSatiri_(bas, tur) {
+  var sh = sayfa_('Hedefler'); if (!sh || sh.getLastRow() < 2) return 0;
+  var b = basliklar_('Hedefler'), ib = b.indexOf('Başlangıç'), it = b.indexOf('Tür');
+  var v = sh.getRange(2, 1, sh.getLastRow() - 1, b.length).getValues();
+  for (var i = v.length - 1; i >= 0; i--) if (String(hucre_(v[i][ib])) === String(bas) && String(v[i][it]) === String(tur)) return i + 2;
+  return 0;
+}
 function tarifMalzemeSil_(id) {
   var sh = sayfa_('Tarif Malzemeleri'); if (!sh || sh.getLastRow() < 2) return;
   var col = basliklar_('Tarif Malzemeleri').indexOf('Tarif ID') + 1;
@@ -146,6 +210,7 @@ function tarifMalzemeSil_(id) {
  * p.sade = '1': sadece gün verileri (eski bir aya geçerken) */
 function sunucuOku(p) {
   semaGuncelle_();
+  if (p.bilgi === '1') return { ok: true, surum: SUNUCU_SURUM, sayilar: sayilar_(), sonYedek: sonYedek_() }; // 1.7: Ayarlar › Veri
   var gun = p.gun || '', bas = p.bas || gun, bitis = p.bitis || gun;
   if (bas > bitis) { var t = bas; bas = bitis; bitis = t; }
   var ogunler = oku_('Öğün Kayıtları');
@@ -312,6 +377,34 @@ function islemYap_(is) {
         var ra = satirBul_('Ağrı Notları', 'ID', v.notId);
         if (ra) { hucreYaz_('Ağrı Notları', ra, 'Durum', 'geçti'); hucreYaz_('Ağrı Notları', ra, 'Kapanış', v.tarih); }
       }
+      return;
+    case 'ayar_yaz': // 1.7: varsa değeri değişir, yoksa eklenir
+      var ra2 = satirBul_('Ayarlar', 'Anahtar', v.anahtar), bil = AYAR_BILGI[v.anahtar] || [v.grup || '', ''];
+      if (ra2) { hucreYaz_('Ayarlar', ra2, 'Değer', v.deger); if (bil[0]) hucreYaz_('Ayarlar', ra2, 'Grup', bil[0]); }
+      else satirEkle_('Ayarlar', { 'Grup': bil[0], 'Anahtar': v.anahtar, 'Değer': v.deger, 'Açıklama': bil[1] });
+      return;
+    case 'hedef_ekle': // aynı gün ve türde hedef varsa değeri değişir
+      var rh = hedefSatiri_(v.baslangic, v.tur);
+      if (rh) hucreYaz_('Hedefler', rh, 'Değer', v.deger);
+      else satirEkle_('Hedefler', { 'Başlangıç': v.baslangic, 'Tür': v.tur, 'Değer': v.deger, 'Not': '' });
+      return;
+    case 'hedef_sil':
+      var rhs = hedefSatiri_(v.baslangic, v.tur);
+      if (rhs) sayfa_('Hedefler').deleteRow(rhs);
+      return;
+    case 'yedekle':
+      yedekAl_();
+      return;
+    case 'sifirla': // önce Drive'a yedek; sonra seçilen gruplar silinir
+      yedekAl_();
+      (v.gruplar || []).forEach(function (g) {
+        if (g === 'ayarlar' || g === 'profil') {
+          var l = ayarSatirlari_(g === 'profil');
+          for (var i = l.length - 1; i >= 0; i--) sayfa_('Ayarlar').deleteRow(l[i]);
+          return;
+        }
+        (SIFIR_GRUP[g] || []).forEach(function (ad) { var sh = sayfa_(ad); if (sh && sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1); });
+      });
       return;
     default:
       throw new Error('bilinmeyen işlem: ' + is.tur);

@@ -15,7 +15,7 @@ function sh(ad) {
   return {
     getLastRow: () => v.length, getLastColumn: () => Math.max(0, ...v.map(x => x.length)),
     getRange: r, getDataRange: () => r(1, 1, v.length, Math.max(1, ...v.map(x => x.length))),
-    deleteRow: (i) => v.splice(i - 1, 1), setFrozenRows: () => {}
+    deleteRow: (i) => v.splice(i - 1, 1), deleteRows: (i, n) => v.splice(i - 1, n), setFrozenRows: () => {}
   };
 }
 const ss = { getSheetByName: sh, insertSheet: (ad) => { sayfalar[ad] = []; return sh(ad); }, getSpreadsheetTimeZone: () => 'Europe/Istanbul' };
@@ -25,6 +25,7 @@ const ctx = {
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, x) => { props[k] = x; } }) },
   Utilities: { formatDate: (d, tz, f) => { const p = n => String(n).padStart(2, '0'); const s = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); return f.includes('HH') ? s + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) : s; } }
 };
+ctx.yedekle = () => { ctx.__yedek = (ctx.__yedek || 0) + 1; };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(depo, process.env.SUNUCU || 'sunucu.js'), 'utf8'), ctx);
 // Örnek veri
