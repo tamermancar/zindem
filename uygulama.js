@@ -1002,7 +1002,7 @@
         var s = $('#grup-cipler .secili'); if (s && grupSec !== 'oneri') { var el = $('#grup-cipler'); el.scrollLeft = s.offsetLeft - (el.clientWidth - s.offsetWidth) / 2; }
       }, false,
       '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<label class="gizli-yazi" for="arama">Besin ara</label><input id="arama" class="arama" type="search" placeholder="Besin ara: yoğurt, tavuk, elma…" autocomplete="off">' + aramaSil() + '</div>' +
-      '<div class="grup-cipler" id="grup-cipler" role="group" aria-label="Besin grupları"></div>');
+      '<div class="grup-cipler" id="grup-cipler" role="tablist" aria-label="Besin grupları"></div>');
   }
   /* Arama kutusundaki silme düğmesi (tarayıcının küçük mavi çarpısı yerine). Sadece yazı varken görünür. */
   function aramaSil() { return '<button type="button" class="arama-sil" hidden aria-label="Aramayı temizle">' + ik('x') + '</button>'; }
@@ -1020,7 +1020,7 @@
     var liste = [['oneri', 'Önerilen'], ['benim', 'Benim eklediklerim']].concat(GRUPLAR.filter(function (g) { return dolu[g]; }).map(function (g) { return [g, g]; }));
     var el = $('#grup-cipler'); if (!el) return;
     el.innerHTML = liste.map(function (x) {
-      return '<button class="cip' + (grupSec === x[0] ? ' secili' : '') + '" aria-pressed="' + (grupSec === x[0]) + '" data-grup="' + esc(x[0]) + '">' + esc(x[1]) + '</button>';
+      return '<button class="sekme-ciz' + (grupSec === x[0] ? ' secili' : '') + '" role="tab" aria-selected="' + (grupSec === x[0]) + '" data-grup="' + esc(x[0]) + '">' + esc(x[1]) + '</button>';
     }).join('');
     el.querySelectorAll('[data-grup]').forEach(function (b) {
       b.onclick = function () {
