@@ -3,6 +3,16 @@ window.T2 = (function () {
   const ik = (n, c) => '<svg class="ikon ' + (c || '') + '" aria-hidden="true"><use href="#t-' + n + '"/></svg>';
   const $ = s => document.querySelector(s);
   let SERIT = '';
+  // Taslak için yeni Tabler simgeleri (kodda index.html'deki simge listesine eklenecek)
+  (function () {
+    const Y = {
+      'eye-off': '<path d="M10.585 10.587a2 2 0 0 0 2.829 2.828"/><path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87"/><path d="M3 3l18 18"/>',
+      'salt': '<path d="M12 13v.01"/><path d="M10 16v.01"/><path d="M14 16v.01"/><path d="M7.5 8h9l-.281 -2.248a2 2 0 0 0 -1.985 -1.752h-4.468a2 2 0 0 0 -1.986 1.752l-.28 2.248"/><path d="M7.5 8l-1.612 9.671a2 2 0 0 0 1.973 2.329h8.278a2 2 0 0 0 1.973 -2.329l-1.612 -9.671"/>'
+    };
+    const ilk = document.querySelector('svg symbol'); if (!ilk) return;
+    Object.keys(Y).forEach(k => { if (document.getElementById('t-' + k)) return;
+      ilk.parentNode.insertAdjacentHTML('beforeend', '<symbol id="t-' + k + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + Y[k] + '</symbol>'); });
+  })();
   function seritAl() { const s = document.getElementById('serit'); if (s) SERIT = s.outerHTML; }
 
   function menu() {
@@ -45,7 +55,7 @@ window.T2 = (function () {
 
   // ---------- 2. Tanışma ----------
   function tanisma(adim) {
-    const bas = '<div class="t2-adimlar" aria-label="' + adim + '. adım, 4 adımdan">' + [1, 2, 3, 4].map(i => '<span class="' + (i <= adim ? 'dolu' : '') + '"></span>').join('') + '</div>';
+    const ad = Math.min(adim, 4), bas = '<div class="t2-adimlar" aria-label="' + ad + '. adım, 4 adımdan">' + [1, 2, 3, 4].map(i => '<span class="' + (i <= ad ? 'dolu' : '') + '"></span>').join('') + '</div>';
     let ic = '';
     if (adim === 2) {
       ic = '<p class="t2-soru">Elinde neler var?</p><p class="t2-not">Sadece bunlarla yapılabilen hareketler gösterilir.</p><div class="cipler">' +
@@ -55,11 +65,20 @@ window.T2 = (function () {
         [['Ayakta rahatım', 'Ayakta, yerde ve oturarak bütün hareketler', 1], ['Dengede zorlanıyorum', 'Ayakta hareketler duvar ya da sandalye desteğiyle'],
          ['Oturarak', 'Sadece sandalyede ya da yatakta yapılan hareketler'], ['Tekerlekli sandalye', 'Belden yukarısı ve oturarak yapılan hareketler']]
           .map(x => '<li><button class="' + (x[2] ? 'secili' : '') + '" aria-pressed="' + !!x[2] + '"><span><b>' + x[0] + '</b><small>' + x[1] + '</small></span>' + (x[2] ? ik('check') : '') + '</button></li>').join('') + '</ul>';
+    } else if (adim === 5) {
+      ic = '<p class="t2-soru">Dikkat etmen gereken bir bölge var mı?</p><p class="t2-not">Bu bölgeyi zorlayan hareketler listede işaretlenir.</p><div class="cipler">' +
+        ['Yok', 'Boyun', 'Omuz', 'Kol', 'El / parmak|1', 'Sırt', 'Bel', 'Kalça', 'Bacak / ayak', 'Diz'].map(x => { const p = x.split('|'); return '<button class="cip' + (p[1] ? ' secili' : '') + '">' + p[0] + '</button>'; }).join('') + '</div>' +
+        '<div class="t2-alt-soru"><p class="t2-alt-baslik">El / parmak için</p>' +
+        '<div class="cipler"><button class="cip secili">Sağ</button><button class="cip">Sol</button><button class="cip">İkisi</button></div>' +
+        '<ul class="t2-secim t2-kucuk">' +
+        [['Ağrı ya da hassasiyet var', 0], ['Tutmakta, kavramakta zorlanıyorum', 1], ['Kullanamıyorum ya da yok', 0]]
+          .map(x => '<li><button class="' + (x[1] ? 'secili' : '') + '" aria-pressed="' + !!x[1] + '"><span><b>' + x[0] + '</b></span>' + (x[1] ? ik('check') : '') + '</button></li>').join('') + '</ul>' +
+        '<p class="t2-not t2-sessiz">Sadece hareketleri sana uydurmak için sorulur.</p></div>';
     } else if (adim === 4) {
       ic = '<p class="t2-soru">Dikkat etmen gereken bir bölge var mı?</p><p class="t2-not">Bu bölgeyi zorlayan hareketler listede işaretlenir.</p><div class="cipler">' +
         ['Yok', 'Boyun', 'Omuz|1', 'Dirsek', 'El bileği', 'Sırt', 'Bel|1', 'Kalça', 'Kasık|1', 'Diz|1', 'Ayak bileği'].map(x => { const p = x.split('|'); return '<button class="cip' + (p[1] ? ' secili' : '') + '">' + p[0] + '</button>'; }).join('') + '</div>';
     }
-    pencere('Seni tanıyalım', ic + '<div class="alt-dugme"><button class="ana-dugme">' + (adim === 4 ? 'Hareketleri göster' : 'Devam') + '</button></div>',
+    pencere('Seni tanıyalım', ic + '<div class="alt-dugme"><button class="ana-dugme">' + (adim >= 4 ? 'Hareketleri göster' : 'Devam') + '</button></div>',
       { bas: bas, sag: '<button class="metin-dugme">Atla</button>' });
   }
 
@@ -87,6 +106,21 @@ const ara = (y) => '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<l
   function hareketler() {
     ciz(ust(2, '<button class="ekle-dugme">' + ik('plus') + 'Kendi hareketin</button>', ara('Hareket ara') + filtreler()) +
       '<div class="bolum-baslik">124 hareket · sana uygun</div><section class="kart an-kart">' + HR.map(x => hrSatir(x)).join('') + '</section>');
+  }
+  function hareketlerUzuv() {
+    const L = [
+      ['Duvar şınavı', 'Göğüs · ekipmansız · ayakta', '', '', '', 'Tek elle yapılabilir'],
+      ['Lastikle kürek çekme', 'Sırt · direnç lastiği · oturarak', '', 'Tutma gerekir · kolay hali var'],
+      ['Sandalyeden kalkma', 'Bacak · sandalye · ayakta'],
+      ['Köprü', 'Kalça · mat · sırtüstü'],
+      ['Yan yatarak omuz döndürme', 'Omuz · su şişesi · yerde', '', 'Tutma gerekir · kolay hali var'],
+      ['Kuş-köpek', 'Gövde · mat · dört ayak', '', '', '', 'Tek elle yapılabilir'],
+      ['Destekli topuk kaldırma', 'Baldır · sandalye · ayakta'],
+    ];
+    ciz(ust(2, '<button class="ekle-dugme">' + ik('plus') + 'Kendi hareketin</button>', ara('Hareket ara') + filtreler()) +
+      '<div class="t2-gizli">' + ik('eye-off') + '<span><b>12 hareket gizlendi</b> · sağ elle tutma gerektiriyor</span><button class="metin-dugme">Göster</button></div>' +
+      '<section class="kart an-kart">' + L.map(x => '<div class="t2-hr"><button class="t2-hr-bilgi"><b>' + x[0] + '</b><small>' + x[1] + '</small>' +
+        (x[3] ? '<span class="an-etiket">' + ik('alert-triangle') + x[3] + '</span>' : '') + (x[5] ? '<span class="an-etiket bilgi">' + x[5] + '</span>' : '') + '</button><button class="t2-ekle" aria-label="' + x[0] + ' ekle">' + ik('plus') + '</button></div>').join('') + '</section>');
   }
   function detay() {
     pencere('Sandalyeden kalkma',
@@ -137,7 +171,7 @@ const ara = (y) => '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<l
   }
   function antrenmanDuzenle() {
     const s = [['Isınma', ''], ['Çene içeri çekme', '1 set × 10 tekrar'], ['Kedi-deve', '1 set × 6 tekrar'], ['Ana hareketler', ''],
-      ['Eğimli şınav', '3 set × 8–12 tekrar · 90 sn dinlenme'], ['Masa altında çekiş', '3 set × 6–10 tekrar · 90 sn dinlenme'], ['Diz üstü şınav', '2 set × 8 tekrar · 90 sn dinlenme'], ['Yan yatarak omuz döndürme', '2 set × 12 tekrar, her kol · 60 sn dinlenme']];
+      ['Eğimli şınav', '3 set × 8–12 tekrar · 90 sn dinlenme'], ['Masa altında çekiş', '3 set × 6–10 tekrar · 90 sn dinlenme'], ['Diz üstü şınav', '2 set × 8 tekrar · 90 sn dinlenme · kısa günde yok'], ['Yan yatarak omuz döndürme', '2 set × 12 tekrar, her kol · 60 sn dinlenme']];
     pencere('Üst vücut',
       '<div class="form-alan"><label for="a-ad">Antrenmanın adı</label><input id="a-ad" type="text" value="Üst vücut"></div>' +
       s.map(x => x[1] ? '<div class="t2-duzen"><button class="t2-satir"><span><b>' + x[0] + '</b><small>' + x[1] + '</small></span>' + ik('chevron-right') + '</button></div>'
@@ -149,6 +183,7 @@ const ara = (y) => '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<l
     pencere('Eğimli şınav',
       '<div class="form-alan"><span class="etiket-yazi">Nasıl kaydedilsin?</span><div class="cipler"><button class="cip secili">Tekrar</button><button class="cip">Süre</button></div></div>' +
       sayac('Set', '3') + sayac('Tekrar, en az', '8') + sayac('Tekrar, en çok', '12') + sayac('Dinlenme', '90 sn') +
+      '<div class="t2-sayac"><span id="k-gun">Kısa günde de yap<small>Kısa günde 1 set eksik yapılır</small></span><button class="anahtar" role="switch" aria-checked="true" aria-labelledby="k-gun"><span></span></button></div>' +
       '<div class="form-alan"><label for="h-not">Not (isteğe bağlı)</label><input id="h-not" type="text" placeholder="Ör. tezgahta yap"></div>' +
       '<button class="metin-dugme t2-sil">' + ik('trash') + 'Antrenmandan çıkar</button>' +
       '<div class="alt-dugme"><button class="ana-dugme">Tamam</button></div>', { geri: 'Üst vücut', kucuk: false });
@@ -190,6 +225,20 @@ const ara = (y) => '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<l
     seritSon();
   }
   function seritSon() { const s = document.getElementById('serit'); if (s) s.scrollLeft = s.scrollWidth; }
+  function kisaGun() {
+    ciz(ust(0) + SERIT +
+      '<section class="kart an-ust"><h2>Üst vücut</h2><div class="an-ust-ust"><small>Cuma · Kısa gün</small><div class="an-sayi"><b>0</b><span> / 7 set</span></div></div>' +
+      '<span class="an-cubuk" aria-hidden="true"><span style="width:0%"></span></span>' +
+      '<div class="t2-kisa">' + ik('clock') + '<span>Kısa gün · 1’er set eksik</span><button class="metin-dugme">Tam antrenman</button></div></section>' +
+      '<div class="bolum-baslik">Isınma</div><section class="kart an-kart">' + hr('Çene içeri çekme', '1 × 10', [{ h: 10 }], { tek: 1 }) + '</section>' +
+      '<div class="bolum-baslik">Ana hareketler</div><section class="kart an-kart">' +
+      hr('Eğimli şınav', '2 × 8–12 · 90 sn · kısa gün', [{ h: 8 }, { h: 8 }]) +
+      hr('Masa altında çekiş', '2 × 6–10 · 90 sn · kısa gün', [{ h: 6 }, { h: 6 }]) +
+      hr('Yan yatarak omuz döndürme', '1 × 12, her kol · 60 sn · kısa gün', [{ h: 12 }]) + '</section>' +
+      '<p class="t2-not t2-orta">Kısa günde yok: Sırt esnetme, Diz üstü şınav</p>' +
+      '<button class="ana-dugme ince">' + ik('flag') + 'Antrenmanı bitir</button>');
+    seritSon();
+  }
   function yarim() {
     pencere('Antrenmanı bitir',
       '<div class="t2-yarim"><b>7 / 12 set</b> işaretlendi</div><p class="t2-not" style="text-align:center">5 set işaretlenmedi. Ne yapalım?</p>' +
@@ -208,5 +257,29 @@ const ara = (y) => '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<l
       '<li><em class="yarim">' + ik('alert-triangle') + '</em><span><b>Alt vücut</b> · bir hafta daha aynı kal<small>sağ kasık ağrısı 5 · sınır 3</small></span></li>' +
       '</ul><div class="hf-dugmeler"><button class="ikinci-dugme">Değiştir</button><button class="ana-dugme ince">Tamam</button></div></section>'); seritSon();
   }
-  return { seritAl, bos, tanisma, hareketler, detay, kendiHareket, programim, programDuzenle, antrenmanDuzenle, hareketAyar, hareketSec, gun, yarim, haftaOzet, kapat };
+  const ALERJEN = ['Gluten (buğday, arpa…)', 'Süt|1', 'Yumurta|1', 'Balık', 'Kabuklu deniz ürünleri', 'Yumuşakçalar', 'Yer fıstığı', 'Sert kabuklu yemişler (ceviz, fındık…)', 'Soya', 'Susam', 'Kereviz', 'Hardal', 'Acı bakla', 'Sülfit'];
+  function beslenme() {
+    pencere('Beslenme',
+      '<p class="t2-soru">Beslenmende dikkat ettiğin bir durum var mı?</p><p class="t2-not">Seçtiklerine göre tarifler işaretlenir, gerekirse uyarı çıkar.</p><div class="cipler">' +
+      ['Yok', 'Alerji|1', 'Tansiyon|1', 'Kan şekeri', 'Kolesterol', 'Çölyak', 'Diğer…'].map(x => { const p = x.split('|'); return '<button class="cip' + (p[1] ? ' secili' : '') + '">' + p[0] + '</button>'; }).join('') + '</div>' +
+      '<div class="t2-alt-soru"><p class="t2-alt-baslik">Alerjin hangilerine?</p><div class="cipler">' +
+      ALERJEN.map(x => { const p = x.split('|'); return '<button class="cip' + (p[1] ? ' secili' : '') + '">' + p[0] + '</button>'; }).join('') + '</div>' +
+      '<p class="t2-alt-baslik" style="margin-top:12px">İçerenler listede</p><div class="cipler"><button class="cip secili">İşaretlensin</button><button class="cip">Hiç görünmesin</button></div></div>' +
+      '<div class="t2-alt-soru"><p class="t2-alt-baslik">Tansiyon</p><p class="t2-not" style="margin:0">Tariflerde ve günün toplamında tuz gösterilir.</p></div>' +
+      '<p class="t2-not t2-sessiz">Bu bilgiler sadece senin tablonda durur.</p>' +
+      '<div class="alt-dugme"><button class="ana-dugme">Kaydet</button></div>', { bas: '' });
+  }
+  function alerjenIsaretle() {
+    document.querySelectorAll('#sonuclar .sonuc, #sonuclar .sofra-kutu').forEach(el => {
+      const t = el.textContent.toLowerCase(), b = el.querySelector('.bilgi');
+      if (!b || b.querySelector('.an-etiket')) return;
+      const et = /yumurta|omlet|menemen/.test(t) ? 'Yumurta içerir' : /peynir|süt|yoğurt|ayran|labne|kefir/.test(t) ? 'Süt içerir' : '';
+      if (et) b.insertAdjacentHTML('beforeend', '<span class="an-etiket">' + ik('alert-triangle') + et + '</span>');
+    });
+  }
+  function tuzUyari() {
+    const ic = document.getElementById('pencere-ic'); if (!ic) return;
+    ic.insertAdjacentHTML('afterbegin', '<div class="t2-uyari t2-tuz">' + ik('salt') + '<span><b>Tansiyon için:</b> tuzu azaltabilirsin.<small>Porsiyonda tuz: — g · günlük sınır 5 g (DSÖ)</small></span></div>');
+  }
+  return { hareketlerUzuv, kisaGun, beslenme, alerjenIsaretle, tuzUyari, seritAl, bos, tanisma, hareketler, detay, kendiHareket, programim, programDuzenle, antrenmanDuzenle, hareketAyar, hareketSec, gun, yarim, haftaOzet, kapat };
 })();
