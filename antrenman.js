@@ -57,7 +57,7 @@ window.ZA = function (Z) {
     A.katalogYukleniyor = true;
     fetch('hareketler.json?v=1').then(function (r) { return r.json(); }).then(function (d) {
       A.katalog = d.hareketler || []; A.katalogYukleniyor = false;
-      if (S.ekran === 'antrenman') Z.ciz();
+      if (S.ekran === 'antrenman' || S.ekran === 'ilerleme') Z.ciz();
       if (!$('#pencere').hidden && A.pencereYenile) A.pencereYenile();
     }).catch(function () { A.katalogYukleniyor = false; Z.bildir('⚠ Hareket listesi yüklenemedi'); });
   }
@@ -93,8 +93,10 @@ window.ZA = function (Z) {
     var l = A.kayitlar.filter(function (k) { return k.gun === gun && k.antId === antId && k.hid === hid; });
     var o = {}; l.forEach(function (k) { o[k.set] = k; }); return o;
   }
-  function gecenSefer(gun, hid) {
-    var l = A.kayitlar.filter(function (k) { return k.hid === hid && k.gun < gun; });
+  // 1.10: ısınma ile ana hareket ayrı tutulur (aynı hareket bir antrenmanda ısınma, başkasında ana olabilir)
+  function kayitBolumu(k) { var a = antBul(k.antId), x = a && a.hareketler.filter(function (y) { return y.h === k.hid; })[0]; return (x && x.bolum) || 'ana'; }
+  function gecenSefer(gun, hid, bolum) {
+    var l = A.kayitlar.filter(function (k) { return k.hid === hid && k.gun < gun && kayitBolumu(k) === (bolum || 'ana'); });
     if (!l.length) return '';
     var son = l.reduce(function (m, k) { return k.gun > m ? k.gun : m; }, '');
     return l.filter(function (k) { return k.gun === son; }).sort(function (a, b) { return a.set - b.set; }).map(function (k) { return bicim(k.tekrar); }).join(' · ');
@@ -288,7 +290,7 @@ window.ZA = function (Z) {
         : '<button class="an-set" data-a-set="' + esc(x.h) + '" data-n="' + i + '" aria-label="' + i + '. set, hedef ' + hedefT + (sure ? ' saniye' : ' tekrar') + '. Yaptım olarak işaretle">' + hedefT + '</button>';
     }
     if (!tek) daireler += '<button class="an-set ekle" data-a-set-ekle="' + esc(x.h) + '" aria-label="' + esc(hh.ad) + ' için set ekle">' + ik('plus') + '</button>';
-    var gecen = gecenSefer(gun, x.h);
+    var gecen = gecenSefer(gun, x.h, x.bolum);
     var meta = (tek ? araliK + (sure ? '' : ' tekrar') : y.set + ' × ' + araliK) + (x.taraf || hh.taraf ? ', her taraf' : '') + (x.dinlenme && !tek ? ' · ' + x.dinlenme + ' sn' : '') + (gecen ? ' · Geçen: <i>' + gecen + '</i>' : '');
     var et = ag ? '<span class="an-etiket' + (ara ? ' ara' : '') + '">' + ik('alert-triangle') + (ag.k === 'dikkat' ? 'Hafif yap' : ag.k === 'ara' ? 'Bugün ara ver' : 'Antrenmana ara ver') + '</span> ' : '';
     var duzen = '';
@@ -872,5 +874,17 @@ window.ZA = function (Z) {
     if (is.tur === 'program_sil') { A.programlar = A.programlar.filter(function (x) { return x.id !== v.id; }); A.antrenmanlar = A.antrenmanlar.filter(function (x) { return x.programId !== v.id; }); }
     if (is.tur === 'hareket_ekle' && !A.hareketlerim.some(function (h) { return h.id === v.id; })) A.hareketlerim.push({ id: v.id, ad: v.ad, tur: v.tur, bolge: v.bolge, ekipman: v.ekipman || [], poz: v.poz, zorlar: v.zorlar || [], uzuv: v.uzuv || [], benim: true, kaynak: 'Benim eklediğim', metin: { not: v.not } });
   }
-  return { ciz: ciz, yukle: yukle, uygula: uygula, ozet: ozet, gunSec: function (g) { A.gun = g || S.bugun; A.sekme = 'bugun'; } };
+  /* 1.10: İlerleme ekranı için: o günün planı, satırı, set var mı, hareket bilgisi */
+  var ilerleme = {
+    plan: function (g) {
+      var p = etkinProgram(); if (!p) return null;
+      if (p.baslangic && g < String(p.baslangic).slice(0, 10)) return null;
+      var id = p.plan[haftaGunu(g)], a = id && antBul(id); return a ? { id: a.id, ad: a.ad } : null;
+    },
+    gunSatiri: function (g) { return A.gunler[g] || null; },
+    setVar: function (g) { return A.kayitlar.some(function (k) { return k.gun === g; }); },
+    katalog: katalogGetir,
+    hareket: function (h) { var x = hBul(h); return x ? { ad: x.ad, tur: x.tur, bolge: x.bolge } : null; }
+  };
+  return { ciz: ciz, yukle: yukle, uygula: uygula, ozet: ozet, ilerleme: ilerleme, gunSec: function (g) { A.gun = g || S.bugun; A.sekme = 'bugun'; } };
 };

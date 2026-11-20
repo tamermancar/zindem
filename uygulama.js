@@ -17,8 +17,8 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.9.0';
-  var SURUM = '1.9';
+  var SUNUCU_SURUM = '1.10.0';
+  var SURUM = '1.10';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -347,6 +347,7 @@
       S.hedefler = c.hedefler || []; S.besinlerim = c.besinlerim || []; S.tarifler = c.tarifler || [];
       S.agri = c.agri || []; S.son = c.sonYenenler || []; S.sik = c.sikYenenler || {};
       if (ANT) ANT.yukle(c.antrenman);
+      if (ILR) ILR.sifirla(); // İlerleme verisi ekran açılınca yeniden alınır
       S.gunler = {}; (c.gunler || []).forEach(function (g) { S.gunler[g] = 1; });
       S.gv = {}; S.aralikBas = ''; S.oncekiBas = {}; S.oncekiSunucu = {};
       gunVerisiYaz(c, istenen);
@@ -381,6 +382,7 @@
       }
       if (is.tur === 'tarif_kaydet') tarifYerel(v);
       if (ANT) ANT.uygula(is);
+      if (ILR) ILR.uygula(is);
       if (is.tur === 'ayar_yaz') S.ayar[v.anahtar] = v.deger;
       if (is.tur === 'hedef_ekle') hedefYerel(v);
       if (is.tur === 'hedef_sil') S.hedefler = S.hedefler.filter(function (h) { return !(String(h['Başlangıç']) === v.baslangic && h['Tür'] === v.tur); });
@@ -672,6 +674,7 @@
     }
     if (S.ekran === 'mutfak') { mutfakCiz(ana); durumGoster(); acilisKapat(); return; }
     if (S.ekran === 'antrenman' && ANT) { ANT.ciz(ana); durumGoster(); acilisKapat(); return; }
+    if (S.ekran === 'ilerleme' && ILR) { ILR.ciz(ana); durumGoster(); acilisKapat(); return; }
     var hk = hedef('kalori'), hp = hedef('protein'), hs = hedef('su_ml'), ha = hedef('adim');
     var t = toplamlar(S.kayitlar), su = S.gunluk.su || 0, adim = sayi(S.gunluk.adim);
     var h = '';
@@ -1289,7 +1292,13 @@
       clearTimeout(zaman); document.body.classList.add('klavye');
       var el = e.target;
       if (el.closest('.pencere-bas')) return; // 1.8.1: sabit başlıktaki arama zaten görünür; kaydırma listeyi kaçırıyordu
-      setTimeout(function () { if (document.activeElement === el && el.scrollIntoView) el.scrollIntoView({ block: el.type === 'search' ? 'start' : 'center', behavior: 'smooth' }); }, 320);
+      setTimeout(function () {
+        if (document.activeElement !== el || !el.scrollIntoView) return;
+        // 1.10: kutu klavyeyle birlikte de görünüyorsa liste yerinden oynamaz
+        var r = el.getBoundingClientRect(), vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        if (el.type !== 'search' && r.top >= 80 && r.bottom <= vh - 12) return;
+        el.scrollIntoView({ block: el.type === 'search' ? 'start' : 'center', behavior: 'smooth' });
+      }, 320);
     });
     document.addEventListener('focusout', function (e) {
       if (!yaziKutusu(e.target)) return;
@@ -2004,7 +2013,7 @@
 
   /* ---------- 1.7: Ayarlar ---------- */
   var TEMALAR = [['acik', 'Açık'], ['koyu', 'Koyu'], ['telefon', 'Telefona göre']];
-  var HEDEF_TUR = [['kalori', 'Kalori', 'kcal', 'Üst sınır · altında kalmak amaç'], ['protein', 'Protein', 'g', 'Ulaşılacak hedef'], ['su_ml', 'Su', 'ml', 'Günlük'], ['adim', 'Adım', 'adım', 'Günlük']];
+  var HEDEF_TUR = [['kalori', 'Kalori', 'kcal', 'Üst sınır · altında kalmak amaç'], ['protein', 'Protein', 'g', 'Ulaşılacak hedef'], ['su_ml', 'Su', 'ml', 'Günlük'], ['adim', 'Adım', 'adım', 'Günlük'], ['kilo', 'Kilo', 'kg', 'İsteğe bağlı']];
   function hizliSu() { return String(ayar('hizli_ekle_ml', '200,500,1000')).split(',').map(sayi).filter(isFinite); }
   function ayarlarAc() {
     function icerik() {
@@ -2063,7 +2072,7 @@
           (isFinite(v) ? '<small>' + tarihKisa(en['Başlangıç']) + ' itibarıyla</small>' : '<small>hedef yok</small>') + '</div>';
       }).join('');
       var h = '<section class="hedef-kutu" aria-label="Şu an geçerli hedefler"><div class="hk-baslik">Şu an geçerli</div><div class="hg-izgara">' + simdi + '</div></section>';
-      h += '<div class="bolum-baslik">Yeni hedef</div>' + HEDEF_TUR.map(function (x) { return sayiAlani('h-' + x[0], x[1], x[3], H.deger[x[0]], x[2]); }).join('') +
+      h += '<div class="bolum-baslik">Yeni hedef</div>' + HEDEF_TUR.map(function (x) { return sayiAlani('h-' + x[0], x[1], x[3], H.deger[x[0]], x[2], x[0] === 'kilo' ? 0.1 : 1); }).join('') +
         '<div class="bolum-baslik">Ne zamandan geçerli?</div><div class="cipler">' +
         '<button class="cip' + (!H.baska ? ' secili' : '') + '" aria-pressed="' + !H.baska + '" data-h-tarih="bugun">Bugünden</button>' +
         '<button class="cip' + (H.baska ? ' secili' : '') + '" aria-pressed="' + H.baska + '" data-h-tarih="baska">Başka tarih…</button></div>' +
@@ -2297,6 +2306,17 @@
       pencereAc: pencereAc, pencereIcerik: pencereIcerik, pencereKapat: pencereKapat, aramaSil: aramaSil, aramaSilBagla: aramaSilBagla,
       gunKaydir: gunKaydir, tarihKisa: tarihKisa, agriKademe: agriKademe, sonSiddet: sonSiddet, yeniNot: function (o) { yeniNot(o); },
       serit: serit, seritKonum: seritKonum, takvimAc: takvimAc
+    });
+  }
+  /* ---------- 1.10: İlerleme ekranı (ilerleme.js) ---------- */
+  var ILR = null;
+  if (window.ZI) {
+    ILR = window.ZI({
+      S: S, $: $, esc: esc, ik: ik, sayi: sayi, bicim: bicim, AYLAR: AYLAR, ANT: ANT, titret: titret,
+      ayar: ayar, ayarYaz: ayarYaz, islemEkle: islemEkle, bildir: bildir, ciz: function () { ciz(); }, hedef: hedef, istekAdresi: istekAdresi,
+      pencereAc: pencereAc, pencereIcerik: pencereIcerik, pencereKapat: pencereKapat, gunKaydir: gunKaydir, agriKademe: agriKademe,
+      tarihKutusu: tarihKutusu, tarihKutusuBagla: tarihKutusuBagla,
+      bugunGit: function (g) { gunDegistir(g); ekranSec('bugun'); }
     });
   }
   window.addEventListener('online', gonder);

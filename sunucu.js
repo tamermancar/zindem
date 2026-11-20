@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.9.0';
+var SUNUCU_SURUM = '1.10.0';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -98,7 +98,10 @@ var AYAR_BILGI = {
   tema: ['gorunum', 'Tema: acik / koyu / telefon'], ipucu_sil: ['ipucu', 'Sola çekip sil ipucu gösterildi'],
   ant_tanisma: ['antrenman', 'Antrenman tanışma soruları cevaplandı'], ant_yer: ['antrenman', 'Nerede: ev / salon / ikisi'],
   ant_ekipman: ['antrenman', 'Ekipman (JSON liste)'], ant_hareket: ['antrenman', 'Hareket durumu: ayakta / destekli / oturarak / sandalye'],
-  ant_hassas: ['antrenman', 'Dikkat edilecek bölgeler (JSON)'], ant_uzuv: ['antrenman', 'Uzuv durumu (JSON)'], ant_ozet_hafta: ['antrenman', 'Haftanın özeti en son hangi hafta kapatıldı']
+  ant_hassas: ['antrenman', 'Dikkat edilecek bölgeler (JSON)'], ant_uzuv: ['antrenman', 'Uzuv durumu (JSON)'], ant_ozet_hafta: ['antrenman', 'Haftanın özeti en son hangi hafta kapatıldı'],
+  boy: ['profil', 'Boy (cm) · vücut kitle indeksi için'],
+  olcu_ek: ['ilerleme', 'Takip edilen ek ölçüler (virgülle: boyun, gogus, pazu, kalca, uyluk, baldir)'],
+  il_gizli: ['ilerleme', 'İlerleme\'de gizlenen kartlar (virgülle)'], il_ozet_ay: ['ilerleme', 'Aylık özet kartı en son hangi ay kapatıldı']
 };
 function ayarGrupDoldur_() {
   var sh = sayfa_('Ayarlar'); if (!sh || sh.getLastRow() < 2) return;
@@ -211,6 +214,13 @@ function hedefSatiri_(bas, tur) {
   for (var i = v.length - 1; i >= 0; i--) if (String(hucre_(v[i][ib])) === String(bas) && String(v[i][it]) === String(tur)) return i + 2;
   return 0;
 }
+function olcumSatiri_(tarih, tur) {
+  var sh = sayfa_('Ölçüler'); if (!sh || sh.getLastRow() < 2) return 0;
+  var b = basliklar_('Ölçüler'), it = b.indexOf('Tarih'), iu = b.indexOf('Tür');
+  var v = sh.getRange(2, 1, sh.getLastRow() - 1, b.length).getValues();
+  for (var i = v.length - 1; i >= 0; i--) if (String(hucre_(v[i][it])).slice(0, 10) === String(tarih) && String(v[i][iu]) === String(tur)) return i + 2;
+  return 0;
+}
 function tarifMalzemeSil_(id) {
   var sh = sayfa_('Tarif Malzemeleri'); if (!sh || sh.getLastRow() < 2) return;
   var col = basliklar_('Tarif Malzemeleri').indexOf('Tarif ID') + 1;
@@ -223,6 +233,7 @@ function tarifMalzemeSil_(id) {
  * p.sade = '1': sadece gün verileri (eski bir aya geçerken) */
 function sunucuOku(p) {
   semaGuncelle_();
+  if (p.ilerleme === '1') return ilerlemeOku_(); // 1.10: İlerleme ekranı
   if (p.bilgi === '1') { var y = yedekler_(); return { ok: true, surum: SUNUCU_SURUM, sayilar: sayilar_(), yedekler: y, sonYedek: y[0] || '' }; } // 1.7: Ayarlar › Veri
   var gun = p.gun || '', bas = p.bas || gun, bitis = p.bitis || gun;
   if (bas > bitis) { var t = bas; bas = bitis; bitis = t; }
@@ -279,6 +290,27 @@ function sunucuOku(p) {
     oncekiOgun: oncekiOgun_(ogunler, gun),
     bas: bas, bitis: bitis, gunVeri: gunVeri, oncekiBas: oncekiBas,
     antrenman: antrenmanOku_(bitis || gun)
+  };
+}
+/* 1.10: İlerleme. Bütün geçmiş, ama satırlar değil gün başına toplamlar (az veri gider):
+ * g: { gün: [kcal, protein, su ml, adım, uyku] } · o: ölçümler [tarih, tür, değer] ·
+ * a: antrenman günleri [gün, antrenman ID, ad, durum, kısa, yapılan, hedef] · k: setler [gün, antrenman ID, hareket ID, ad, set, tekrar] ·
+ * n: ağrı notları (geçenler dahil) + takip */
+function ilerlemeOku_() {
+  semaGuncelle_();
+  var g = {};
+  function gun(x) { return g[x] || (g[x] = [0, 0, 0, '', '']); }
+  oku_('Öğün Kayıtları').forEach(function (o) { var d = String(o['Gün']).slice(0, 10); if (!d) return; var r = gun(d); r[0] += +o['kcal'] || 0; r[1] += +o['Protein'] || 0; });
+  oku_('Günlük').forEach(function (x) { var d = String(x['Gün']).slice(0, 10); if (!d) return; var r = gun(d); r[2] = +x['Su (ml)'] || 0; r[3] = x['Adım'] === '' ? '' : +x['Adım']; r[4] = x['Uyku'] || ''; });
+  Object.keys(g).forEach(function (d) { g[d][0] = Math.round(g[d][0]); g[d][1] = Math.round(g[d][1] * 10) / 10; });
+  var takip = {};
+  oku_('Ağrı Takibi').forEach(function (t) { (takip[t['Not ID']] = takip[t['Not ID']] || []).push([String(t['Tarih']).slice(0, 10), +t['Şiddet'] || 0, t['Cevap'] || '']); });
+  return {
+    ok: true, surum: SUNUCU_SURUM, g: g,
+    o: oku_('Ölçüler').map(function (x) { return [String(x['Tarih']).slice(0, 10), String(x['Tür']), +x['Değer']]; }).filter(function (x) { return x[0] && x[2]; }),
+    a: oku_('Antrenman Günleri').map(function (x) { return [String(x['Gün']).slice(0, 10), String(x['Antrenman ID']), x['Ad'], x['Durum'], String(x['Kısa']) === '1' ? 1 : 0, +x['Yapılan'] || 0, +x['Hedef'] || 0]; }),
+    k: oku_('Antrenman Kayıtları').map(function (x) { return [String(x['Gün']).slice(0, 10), String(x['Antrenman ID']), String(x['Hareket ID']), x['Ad'], +x['Set'] || 1, +x['Tekrar'] || 0]; }),
+    n: oku_('Ağrı Notları').map(function (x) { return { id: x['ID'], acilis: String(x['Açılış']).slice(0, 10), tur: x['Tür'], bolge: x['Bölge'], taraf: x['Taraf'], siddet: +x['Şiddet'] || 0, durum: x['Durum'], kapanis: String(x['Kapanış'] || '').slice(0, 10), takip: takip[x['ID']] || [] }; })
   };
 }
 /* 1.9: Programlar ve son 120 günün antrenman günleri + kayıtları */
@@ -421,6 +453,15 @@ function islemYap_(is) {
     case 'hedef_sil':
       var rhs = hedefSatiri_(v.baslangic, v.tur);
       if (rhs) sayfa_('Hedefler').deleteRow(rhs);
+      return;
+    case 'olcum_yaz': // 1.10: günde her türden tek ölçüm; varsa değeri değişir
+      var ro = olcumSatiri_(v.tarih, v.tur);
+      if (ro) hucreYaz_('Ölçüler', ro, 'Değer', v.deger);
+      else satirEkle_('Ölçüler', { 'Tarih': v.tarih, 'Tür': v.tur, 'Değer': v.deger, 'Birim': v.birim || '', 'Not': '' });
+      return;
+    case 'olcum_sil':
+      var ros = olcumSatiri_(v.tarih, v.tur);
+      if (ros) sayfa_('Ölçüler').deleteRow(ros);
       return;
     case 'yedekle':
       yedekAl_();

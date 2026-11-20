@@ -68,6 +68,51 @@ if (process.env.ORNEK_ANT) {
     ['A1', bugun(-1) + ' 19:00', 'antrenman kaynaklı', 'diz', 'sağ', 4, '', '', 'açık', ''], ['A2', bugun(-2) + ' 08:00', 'gün içi kaza', 'omuz', 'sol', 6, '', '', 'açık', '']];
   sayfalar['Ayarlar'].push(['', 'ant_tanisma', '1', ''], ['', 'ant_ekipman', '["sandalye","mat"]', ''], ['', 'ant_hareket', 'ayakta', '']);
 }
+// ORNEK_IL=1 (1.10): İlerleme için 80 günlük genel örnek kullanıcı (kişisel veri değil). Bugün = 20 Kasım 2026.
+if (process.env.ORNEK_IL) {
+  let tohum = 7; const rnd = () => (tohum = (tohum * 16807) % 2147483647) / 2147483647;
+  const G = (n) => new Date(Date.UTC(2026, 10, 20) + n * 864e5).toISOString().slice(0, 10);
+  const hgun = (n) => { const d = new Date(Date.UTC(2026, 10, 20) + n * 864e5).getUTCDay(); return d === 0 ? 7 : d; };
+  const ogun = [['ID', 'Gün', 'Saat', 'Öğün', 'Besin ID', 'Ad', 'Miktar', 'Ölçü', 'Gram', 'kcal', 'Protein', 'Kayıt zamanı']];
+  const gunluk = [['Gün', 'Su (ml)', 'Adım', 'Uyku']], olc = [['Tarih', 'Tür', 'Değer', 'Birim', 'Not']];
+  const kay = [['ID', 'Gün', 'Antrenman ID', 'Hareket ID', 'Ad', 'Set', 'Tekrar', 'Ağırlık', 'Kayıt zamanı']];
+  const gun = [['Gün', 'Antrenman ID', 'Ad', 'Durum', 'Kısa', 'Yapılan', 'Hedef', 'Not', 'Kayıt zamanı']];
+  let k = 0, sayac = 0;
+  for (let n = -80; n <= 0; n++) {
+    const i = n + 80, g = G(n), w = hgun(n);
+    if (rnd() > 0.05) {
+      ogun.push(['IO' + (k++), g, '09:00', 'Kahvaltı', '', 'Örnek kahvaltı', 1, 'porsiyon', 0, Math.round(500 + rnd() * 200), Math.round(25 + rnd() * 12)]);
+      ogun.push(['IO' + (k++), g, '19:00', 'Akşam', '', 'Örnek akşam', 1, 'porsiyon', 0, Math.round(1050 + rnd() * 450 + (w >= 6 ? 150 : 0)), Math.round(65 + rnd() * 40)]);
+      gunluk.push([g, Math.round((1500 + rnd() * 1500) / 50) * 50, n === 0 ? '' : Math.round(3500 + rnd() * 7500), ['<6', '6-7', '7+', '7+', '6-7', '7+'][Math.floor(rnd() * 6)]]);
+    }
+    if ([1, 4, 6].includes(w) && rnd() > 0.12) olc.push([g, 'kilo', Math.round((84 - i * 2.6 / 80 + (rnd() - 0.5) * 1.2) * 10) / 10, 'kg', '']);
+    if (w === 1 && i % 14 < 7) olc.push([g, 'bel', Math.round((96 - i * 2.5 / 80 + (rnd() - 0.5) * 0.6) * 2) / 2, 'cm', '']);
+    if ([1, 3, 5].includes(w) && n < 0) {
+      const r = rnd(), d = r < 0.72 ? 'tamam' : r < 0.8 ? 'tamam' : r < 0.88 ? 'yarım' : r < 0.93 ? 'kaydırıldı' : 'yapılmadı', kisa = r >= 0.72 && r < 0.8 ? 1 : 0;
+      const a = w === 3 ? 'IN2' : 'IN1', tek = 8 + Math.floor(i / 20);
+      let y = 0;
+      if (d === 'tamam' || d === 'yarım') {
+        (a === 'IN1' ? [['h002', 3 - kisa, tek], ['h010', 3 - kisa, tek - 2]] : [['h053', 3 - kisa, tek + 2], ['h050', 2, 12]]).forEach(([h, set, t]) => {
+          for (let s2 = 1; s2 <= (d === 'yarım' ? 1 : set); s2++) { kay.push(['IK' + (sayac++), g, a, h, { h002: 'Eğimli şınav', h010: 'Masa altında çekiş', h053: 'Sandalyeye oturup kalkma', h050: 'Köprü' }[h], s2, t - (s2 === 3 ? 1 : 0), '', '']); y++; } });
+      }
+      gun.push([i === 60 ? new Date(Date.UTC(2026, 10, 20) + n * 864e5) : g, a, a === 'IN1' ? 'Üst vücut' : 'Alt vücut', d, kisa, y, 10, '', '']);
+    }
+  }
+  sayfalar['Öğün Kayıtları'] = ogun; sayfalar['Günlük'] = gunluk; sayfalar['Ölçüler'] = olc;
+  sayfalar['Antrenman Kayıtları'] = kay; sayfalar['Antrenman Günleri'] = gun;
+  const hs = (l) => JSON.stringify(l.map(([h, ad, set, alt, ust]) => ({ h, ad, bolum: 'ana', set, alt, ust, tur: 'tekrar', dinlenme: 60, kisa: 1 })));
+  sayfalar['Programlar'] = [['ID', 'Ad', 'Etkin', 'Plan', 'Başlangıç', 'Güncelleme'], ['IP1', 'Örnek program', 1, JSON.stringify({ 1: 'IN1', 3: 'IN2', 5: 'IN1' }), G(-80), '']];
+  sayfalar['Antrenmanlar'] = [['ID', 'Program ID', 'Ad', 'Sıra', 'Hareketler'],
+    ['IN1', 'IP1', 'Üst vücut', 1, hs([['h002', 'Eğimli şınav', 3, 8, 12], ['h010', 'Masa altında çekiş', 3, 6, 10]])],
+    ['IN2', 'IP1', 'Alt vücut', 2, hs([['h053', 'Sandalyeye oturup kalkma', 3, 10, 15], ['h050', 'Köprü', 2, 12, 15]])]];
+  sayfalar['Ağrı Notları'] = [['ID', 'Açılış', 'Tür', 'Bölge', 'Taraf', 'Şiddet', 'Hareket', 'Not', 'Durum', 'Kapanış'],
+    ['IA1', G(-3) + ' 19:00', 'antrenman kaynaklı', 'diz', 'sağ', 5, '', '', 'açık', ''], ['IA2', G(-31) + ' 08:00', 'gün içi kaza', 'bel', '', 4, '', '', 'geçti', G(-27)]];
+  sayfalar['Ağrı Takibi'] = [['Not ID', 'Tarih', 'Şiddet', 'Cevap', 'Not'], ['IA1', G(-2), 4, 'azaldı', ''], ['IA1', G(-1), 3, 'azaldı', ''], ['IA2', G(-29), 2, 'azaldı', ''], ['IA2', G(-27), 0, 'geçti', '']];
+  sayfalar['Hedefler'].push(['2026-09-01', 'kilo', 78, '']);
+  sayfalar['Ayarlar'].push(['', 'ant_tanisma', '1', '']);
+}
+// BOS=1: hiç verisi olmayan yeni kullanıcı
+if (process.env.BOS) { ['Öğün Kayıtları', 'Günlük', 'Hedefler'].forEach(k => { sayfalar[k] = sayfalar[k].slice(0, 1); }); }
 let gecikme = +process.env.GECIKME || 0;
 http.createServer((req, res) => {
   const u = url.parse(req.url, true);

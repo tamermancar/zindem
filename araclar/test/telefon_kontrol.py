@@ -248,6 +248,23 @@ async def bir_ekran(b, W, H):
         await pg.tap('[data-ekran=bugun]'); await bekle()
     await adim('antrenman', antrenman); await kapat()
 
+    async def ilerleme():  # 1.10: boş başlayan kullanıcı (örnek veride ölçüm yok)
+        await pg.tap('[data-ekran=ilerleme]'); await pg.wait_for_selector('.il-kart, .il-basla'); await durum('il-ilk')
+        await pg.tap('[data-i-olcum] >> nth=0'); await durum('il-ilk-olcum')
+        await odak_kayiyor_mu('il-ilk-olcum', '#o-bel')
+        await pg.fill('#o-kilo', '82,4'); await pg.tap('[data-o-ek=pazu]'); await durum('il-ilk-olcum-pazu')
+        await pg.tap('#o-kaydet'); await bekle(500); await durum('il-hafta')
+        await kaydir_sabit_mi('il-hafta', None, '.m-ust')
+        await pg.tap('[data-i-tur=ay]'); await durum('il-ay')
+        await pg.tap('[data-i-detay=kilo]'); await durum('il-kilo-detay'); await kapat()
+        await pg.tap('[data-i-detay=beslenme]'); await durum('il-beslenme-detay')
+        await kaydir_sabit_mi('il-beslenme-detay', 'pencere', '#pencere-baslik'); await kapat()
+        await pg.tap('[data-i-paylas]'); await durum('il-paylas')
+        await kaydir_sabit_mi('il-paylas', 'pencere', '#pencere-baslik'); await kapat()
+        await pg.tap('[data-i-duzenle]'); await durum('il-duzenle'); await kapat()
+        await pg.tap('[data-ekran=bugun]'); await bekle()
+    await adim('ilerleme', ilerleme); await kapat()
+
     for h in sayfa_hata: yaz(W, 'sayfa', '❌', 'Sayfa hatası (JS)', h[:160])
 
     # Kolaj: Tamer'e gösterilmeden önce gözle incelenir
