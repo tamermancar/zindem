@@ -1220,3 +1220,15 @@ button.liste-satir .duz-ikon { position: absolute; right: 6px; top: 50%; transfo
 .birimli small:empty { display: none; }
 /* Dar ekranda başlıktaki ekle düğmesi sadece simge olur (başlık kesilmesin) */
 @media (max-width: 380px) { .ekran-ust .ekle-dugme .dar-gizle { display: none; } .ekran-ust .ekle-dugme { width: 44px; padding: 0; justify-content: center; } }
+
+/* ===== 1.10.2 Profil simgesi (Fluent Emoji, zeminsiz) ===== */
+.profil.simgeli { background: none; }
+.profil .simge-resim { width: 86%; height: 86%; display: block; pointer-events: none; }
+.profil.cok-buyuk { width: 88px; height: 88px; font-size: 30px; }
+.profil.cok-buyuk .ikon { width: 40px; height: 40px; }
+.p-simge { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 8px; }
+.simge-izgara { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; justify-items: center; margin-top: 8px; }
+.simge-sec { width: 68px; height: 68px; border: 0; border-radius: 50%; background: transparent; padding: 6px; display: flex; align-items: center; justify-content: center; }
+.simge-sec .simge-resim { width: 100%; height: 100%; display: block; pointer-events: none; }
+.simge-sec .profil { width: 52px; height: 52px; box-shadow: none; font-size: 18px; }
+.simge-sec.secili { box-shadow: 0 0 0 3px var(--ana); background: var(--yumusak); }

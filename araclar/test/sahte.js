@@ -132,5 +132,5 @@ http.createServer((req, res) => {
   if (u.pathname === '/_tablo') { res.end(JSON.stringify(sayfalar[u.query.ad])); return; }
   let f = path.join(depo, u.pathname === '/' ? 'index.html' : u.pathname);
   if (u.pathname === '/ayar.js') { res.end("window.ZINDEM_ADRES='http://localhost:" + port + "/exec';"); return; }
-  fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png' }[path.extname(f)] || 'text/plain' }); res.end(d); });
+  fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' }[path.extname(f)] || 'text/plain' }); res.end(d); });
 }).listen(port, () => console.log('hazır ' + port));

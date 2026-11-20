@@ -34,6 +34,9 @@ KURALLAR = r"""() => {
   // (1.10.1) Başlıktaki düğme yazısı iki satıra düşmemeli (dar ekranda "Yeni tarif" kırılıyordu)
   for (const b of document.querySelectorAll('.ekran-ust button')) { const r = b.getBoundingClientRect();
     if (r.width && r.height > 52) out.push(['❌', 'Düğme yazısı kırılıyor', ad(b) + ' ' + Math.round(r.height) + 'px']); }
+  // (1.10.2) Kırık resim olmamalı (yüklenemeyen simge)
+  for (const im of document.querySelectorAll('img')) { const r = im.getBoundingClientRect();
+    if (r.width && im.complete && !im.naturalWidth) out.push(['❌', 'Resim yüklenmedi', (im.getAttribute('src') || '').slice(0, 60)]); }
   const saydam = a => { const c = getComputedStyle(a); return c.backgroundImage === 'none' && /rgba\(.*,\s*0\)|transparent/.test(c.backgroundColor); };
   for (const e of document.querySelectorAll('body *')) {
     if (!gorunur(e) || e.closest('svg, .gizli-yazi')) continue;
@@ -291,8 +294,18 @@ async def bir_ekran(b, W, H):
         await pg.evaluate("window.scrollTo(0,0)")
         await pg.tap('.ekran-ust [data-profil]'); await durum('profil-menu-mutfak')
         await pg.tap('#pm-profil'); await durum('profil-duzenle')
+        if not await pg.input_value('#p-ad'): yaz(W, 'profil-duzenle', '❌', 'Ad boş geldi', 'Kayıtlı ad Profili düzenle\'de görünmüyor')
         await odak_kayiyor_mu('profil-duzenle', '#p-yil')
+        await pg.fill('#p-boy', '178')
+        await pg.tap('#p-simge'); await durum('simge-sec')
+        await pg.tap('[data-simge=flexed_biceps]'); await durum('simge-secili')
+        await pg.tap('#s-kaydet'); await bekle(300)
+        if await pg.input_value('#p-boy') != '178': yaz(W, 'simge-sec', '❌', 'Form değeri kayboldu', 'Simge seçip dönünce Boy alanı boşaldı')
+        await durum('profil-duzenle-simgeli')
         await kapat()
+        await pg.tap('[data-ekran=bugun]'); await bekle(); await durum('bugun-simgeli')
+        await pg.tap('#profil-dugme'); await durum('profil-menu-simgeli'); await kapat()
+        await pg.tap('[data-ekran=mutfak]'); await bekle()
         await pg.tap('[data-lg="Benim eklediklerim"]'); await bekle(300)
         if await pg.locator('[data-besin-duz]').count():
             await pg.tap('[data-besin-duz] >> nth=0'); await durum('besin-duzenle'); await kapat()

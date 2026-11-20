@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.10.1';
+var SUNUCU_SURUM = '1.10.2';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -100,6 +100,7 @@ var AYAR_BILGI = {
   ant_ekipman: ['antrenman', 'Ekipman (JSON liste)'], ant_hareket: ['antrenman', 'Hareket durumu: ayakta / destekli / oturarak / sandalye'],
   ant_hassas: ['antrenman', 'Dikkat edilecek bölgeler (JSON)'], ant_uzuv: ['antrenman', 'Uzuv durumu (JSON)'], ant_ozet_hafta: ['antrenman', 'Haftanın özeti en son hangi hafta kapatıldı'],
   boy: ['profil', 'Boy (cm) · vücut kitle indeksi için'],
+  profil_simge: ['profil', 'Profil simgesi (boşsa baş harfler)'],
   dogum_yili: ['profil', 'Doğum yılı · hareket önerileri için (isteğe bağlı)'], ant_deneyim: ['antrenman', 'Deneyim: yeni · ara · duzenli'],
   olcu_ek: ['ilerleme', 'Takip edilen ek ölçüler (virgülle: boyun, omuz, gogus, pazu, kalca, uyluk, baldir)'],
   il_gizli: ['ilerleme', 'İlerleme\'de gizlenen kartlar (virgülle)'], il_ozet_ay: ['ilerleme', 'Aylık özet kartı en son hangi ay kapatıldı']

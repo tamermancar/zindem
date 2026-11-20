@@ -29,6 +29,12 @@ window.TS = (function () {
     bBugun: function () { kapat(); var bg = document.querySelector('.alt-menu [data-ekran="bugun"]'); if (bg) bg.click(); setTimeout(function () { profilDugme(avB(TB[0], 'sg-ust')); window.scrollTo(0, 0); }, 400); },
     aSec: function () { pencere('Profil simgesi', izgara(FL.map(function (n) { return { ad: FL_AD[n], html: avA(n) }; }), 0)); },
     bSec: function () { pencere('Profil simgesi', izgara(TB.map(function (x) { return { ad: x[2], html: avB(x) }; }), 0)); },
+    gercekProfil: function () {
+      kapat(); var bg = document.querySelector('.alt-menu [data-ekran="bugun"]'); if (bg) bg.click();
+      setTimeout(function () { profilDugme(avA('flexed_biceps', 'sg-ust')); $('#profil-dugme').click();
+        setTimeout(function () { $('#pm-profil').click();
+          setTimeout(function () { $('#pencere-ic').insertAdjacentHTML('afterbegin', '<div class="sg-profil">' + avA('flexed_biceps', 'sg-buyuk') + '<button class="metin-dugme vurgu">Simgeyi değiştir</button></div>'); }, 300); }, 300); }, 400);
+    },
     profilDuzenle: function (tur) {
       var av = tur === 'a' ? avA('flexed_biceps', 'sg-buyuk') : avB(TB[0], 'sg-buyuk');
       pencere('Profili düzenle', '<div class="sg-profil">' + av + '<button class="metin-dugme vurgu">Simgeyi değiştir</button></div>' +
@@ -43,8 +49,8 @@ window.TS = (function () {
       kapat();
       var b = document.querySelector('.alt-menu [data-ekran="' + ad + '"]'); if (b) b.click();
       setTimeout(function () {
-        var h = document.querySelector('.ekran-ust'); if (!h || h.querySelector('.sg-av')) return;
-        h.insertAdjacentHTML('afterbegin', '<button class="profil sg-dolu sg-kucuk" aria-label="Profil ve ayarlar menüsü">' + (tur === 'a' ? avA('flexed_biceps', 'sg-ust') : avB(TB[0], 'sg-ust')) + '</button>');
+        var h = document.querySelector('.ekran-ust [data-profil]'); if (!h || h.querySelector('.sg-av')) return;
+        h.innerHTML = tur === 'a' ? avA('flexed_biceps', 'sg-ust') : avB(TB[0], 'sg-ust'); h.classList.add('sg-dolu', 'sg-kucuk');
       }, 500);
     },
     kapat: kapat

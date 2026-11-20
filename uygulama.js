@@ -17,8 +17,8 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.10.1';
-  var SURUM = '1.10.1';
+  var SUNUCU_SURUM = '1.10.2';
+  var SURUM = '1.10.2';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -1968,9 +1968,15 @@
     return { seri: seri, gun: g.length, ilk: g[0] || '' };
   }
   /* ---------- 1.10.1: Profil düğmesi her ana ekranda (aynı bileşen), sekmelerin kendi kaydırma yeri ---------- */
-  function profilGorsel() { var bh = basHarfler(); return bh ? esc(bh) : ik('user'); }
+  // 1.10.2: Profil simgesi (Microsoft Fluent Emoji, MIT, simge/ klasöründe). Seçilmezse baş harfler, ad da yoksa kişi simgesi
+  var SIMGELER = [['flexed_biceps', 'Pazu'], ['running_shoe', 'Koşu ayakkabısı'], ['trophy', 'Kupa'], ['sports_medal', 'Madalya'], ['fire', 'Ateş'], ['high_voltage', 'Şimşek'], ['stopwatch', 'Kronometre'],
+    ['red_apple', 'Elma'], ['avocado', 'Avokado'], ['broccoli', 'Brokoli'], ['carrot', 'Havuç'], ['droplet', 'Su damlası'], ['herb', 'Yaprak'], ['sun', 'Güneş'], ['rocket', 'Roket']];
+  function simgeVar(n) { return SIMGELER.some(function (x) { return x[0] === n; }); }
+  function simgeImg(n) { return '<img class="simge-resim" src="simge/' + n + '.svg" alt="" draggable="false">'; }
+  function profilSimge() { var n = ayar('profil_simge', ''); return simgeVar(n) ? n : ''; }
+  function profilGorsel() { var n = profilSimge(); if (n) return simgeImg(n); var bh = basHarfler(); return bh ? esc(bh) : ik('user'); }
   function profilDugmesi(id) {
-    return '<button class="profil' + (id ? '' : ' kucuk') + '"' + (id ? ' id="' + id + '"' : '') + ' data-profil aria-haspopup="dialog" aria-label="Profil ve ayarlar menüsü">' + profilGorsel() + '</button>';
+    return '<button class="profil' + (id ? '' : ' kucuk') + (profilSimge() ? ' simgeli' : '') + '"' + (id ? ' id="' + id + '"' : '') + ' data-profil aria-haspopup="dialog" aria-label="Profil ve ayarlar menüsü">' + profilGorsel() + '</button>';
   }
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-profil]'); if (b && !b.id) profilMenu(); });
   var KONUM = {};
@@ -2031,7 +2037,7 @@
   function profilMenu() {
     var ad = ayar('ad', ''), bh = basHarfler(), o = kayitOzeti();
     function bilgi(ikon, deger, etiket) { return '<span class="pk-bilgi">' + ik(ikon) + '<b>' + deger + '</b><small>' + etiket + '</small></span>'; }
-    var h = '<div class="profil-kart"><div class="pk-ust"><span class="profil buyuk" aria-hidden="true">' + (bh ? esc(bh) : ik('user')) + '</span>' +
+    var h = '<div class="profil-kart"><div class="pk-ust"><span class="profil buyuk' + (profilSimge() ? ' simgeli' : '') + '" aria-hidden="true">' + profilGorsel() + '</span>' +
       '<span class="bilgi"><b id="pencere-baslik">' + (ad ? esc(ad) : 'Profil') + '</b><button class="metin-link" id="pm-profil">' + (ad ? 'Profili düzenle' : 'Adını ekle') + ' ›</button></span>' +
       '<button class="kapat" id="kapat" aria-label="Kapat">' + ik('x') + '</button></div>' +
       (o.gun ? '<div class="pk-bilgiler">' + bilgi('flame', bicim(o.seri) + ' gün', 'üst üste') + bilgi('calendar-event', bicim(o.gun), 'kayıtlı gün') +
@@ -2042,21 +2048,44 @@
       menuSatir('shield-lock', 'Gizlilik', 'Verilerin kendi tablonda', 'pm-gizlilik') + '</div>' +
       '<p class="menu-not">Zindem teşhis koymaz, tedavi önermez. Kayıtlarını tutar, gösterir ve uyarır.</p>';
     pencereAc(null, h, function () {
-      $('#pm-profil').onclick = profilDuzenle;
+      $('#pm-profil').onclick = function () { profilDuzenle(); };
       $('#pm-ayarlar').onclick = ayarlarAc;
       $('#pm-hakkinda').onclick = hakkindaAc;
       $('#pm-gizlilik').onclick = gizlilikAc;
     }, true);
   }
+  // 1.10.2: Simge seçici. Kaydet'te simge yazılır; Profili düzenle'deki henüz kaydedilmemiş alanlar korunur
+  function simgeSec(taslak) {
+    var sec = profilSimge(), bh = basHarfler();
+    function izgara() {
+      return '<div class="simge-izgara" role="radiogroup" aria-label="Profil simgesi">' +
+        '<button class="simge-sec' + (!sec ? ' secili' : '') + '" role="radio" aria-checked="' + !sec + '" data-simge="" aria-label="' + (bh ? 'Baş harfler' : 'Simge yok') + '"><span class="profil">' + (bh ? esc(bh) : ik('user')) + '</span></button>' +
+        SIMGELER.map(function (x) { var on = sec === x[0]; return '<button class="simge-sec' + (on ? ' secili' : '') + '" role="radio" aria-checked="' + on + '" data-simge="' + x[0] + '" aria-label="' + x[1] + '">' + simgeImg(x[0]) + '</button>'; }).join('') +
+        '</div><div class="alt-dugme"><button class="ana-dugme" id="s-kaydet">Kaydet</button></div>';
+    }
+    function bagla(p) {
+      p.querySelectorAll('[data-simge]').forEach(function (b) { b.onclick = function () { sec = b.getAttribute('data-simge'); pencereIcerik(izgara(), bagla, true); }; });
+      $('#s-kaydet').onclick = function () {
+        if (sec !== profilSimge()) ayarYaz('profil_simge', sec);
+        ciz(); profilDuzenle(taslak);
+      };
+    }
+    pencereAc('Profil simgesi', izgara(), bagla, false, '', { ad: 'Profili düzenle', fn: function () { profilDuzenle(taslak); } });
+  }
   // 1.10.1: Ad · Boy · Doğum yılı (ikisi isteğe bağlı); kilo ve hedef sadece gösterilir, dokununca İlerleme › Kilo ve ölçüler
-  function profilDuzenle() {
+  function profilDuzenle(taslak) {
     var ko = ILR && ILR.kiloOzet ? ILR.kiloOzet() : '', yil = new Date().getFullYear();
-    pencereAc('Profili düzenle', '<div class="form-alan"><label for="p-ad">Adın</label><input id="p-ad" type="text" autocomplete="name" value="' + esc(ayar('ad', '')) + '" placeholder="Ad Soyad"></div>' +
-      sayiAlani('p-boy', 'Boy', 'İsteğe bağlı · vücut kitle indeksi için', ayar('boy', ''), 'cm', 1) +
-      sayiAlani('p-yil', 'Doğum yılı', 'İsteğe bağlı · hareket önerileri için', ayar('dogum_yili', ''), '', 1) +
+    var t = taslak && taslak.boy !== undefined ? taslak : { ad: ayar('ad', ''), boy: ayar('boy', ''), yil: ayar('dogum_yili', '') }; // tıklamadan gelen olay nesnesi taslak sayılmaz
+    var ps = profilSimge();
+    pencereAc('Profili düzenle', '<div class="p-simge"><button class="profil cok-buyuk' + (ps ? ' simgeli' : '') + '" id="p-simge" aria-label="Profil simgesini değiştir">' + profilGorsel() + '</button>' +
+      '<button class="metin-dugme vurgu" id="p-simge-yazi">' + (ps ? 'Simgeyi değiştir' : 'Simge seç') + '</button></div>' +
+      '<div class="form-alan"><label for="p-ad">Adın</label><input id="p-ad" type="text" autocomplete="name" value="' + esc(t.ad) + '" placeholder="Ad Soyad"></div>' +
+      sayiAlani('p-boy', 'Boy', 'İsteğe bağlı · vücut kitle indeksi için', t.boy, 'cm', 1) +
+      sayiAlani('p-yil', 'Doğum yılı', 'İsteğe bağlı · hareket önerileri için', t.yil, '', 1) +
       '<button class="profil-kilo" id="p-kilo"><span>' + ik('weight') + 'Kilo ve ölçüler</span><b>' + (ko || 'İlerleme\'de') + '</b>' + ik('chevron-right', 'kucuk-ok') + '</button>' +
       '<div class="alt-dugme"><button class="ana-dugme" id="p-kaydet">Kaydet</button></div>', function () {
         $('#p-kilo').onclick = function () { pencereKapat(); if (ILR) ILR.kiloAc(); };
+        $('#p-simge').onclick = $('#p-simge-yazi').onclick = function () { simgeSec({ ad: $('#p-ad').value, boy: $('#p-boy').value, yil: $('#p-yil').value }); };
         $('#p-kaydet').onclick = function () {
           var v = $('#p-ad').value.trim().replace(/\s+/g, ' '), boy = String($('#p-boy').value).trim(), dy = String($('#p-yil').value).trim();
           var nb = sayi(boy), ny = sayi(dy);
@@ -2072,7 +2101,7 @@
   function hakkindaAc() {
     pencereAc('Hakkında', '<div class="metin-blok"><p><b>Zindem ' + SURUM + '</b><br>Yemek, su, adım, uyku ve ağrı notlarını takip eden kişisel sağlık defteri.</p>' +
       '<p><b>Besin değerleri</b><br>USDA besin veritabanı (SR28) ve ambalaj etiketleri. Ev yemeklerinin malzeme oranları yemek.com ve nefisyemektarifleri.com tariflerinden, değerleri malzemelerinden hesaplanır. Her besinin kaynağı Mutfak › Besinler\'de yazar.</p>' +
-      '<p><b>Simgeler ve yazı tipi</b><br>Tabler Icons (MIT lisansı) · Plus Jakarta Sans (SIL Open Font License)</p>' +
+      '<p><b>Simgeler ve yazı tipi</b><br>Tabler Icons (MIT lisansı) · Profil simgeleri: Microsoft Fluent Emoji (MIT lisansı) · Plus Jakarta Sans (SIL Open Font License)</p>' +
       '<p class="menu-not" style="margin-top:16px">Zindem teşhis koymaz, tedavi önermez. Kayıtlarını tutar, gösterir ve uyarır.</p></div>', null, true, '', { ad: 'Menü', fn: profilMenu });
   }
   function gizlilikAc() {
