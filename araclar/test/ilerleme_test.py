@@ -3,6 +3,7 @@ Akışları dener, tabloya yazılanları /_tablo ile kontrol eder, telefon kontr
 Kullanım: ORNEK_IL=1 node sahte.js <depo> <port> ; python3 -I ilerleme_test.py <port> <klasör> [koyu]"""
 import asyncio, sys, os, re, json, urllib.request
 from playwright.async_api import async_playwright
+import os as _o; exec(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'yazitipi.py'), encoding='utf-8').read())
 PORT, OUT = sys.argv[1], sys.argv[2]; KOYU = len(sys.argv) > 3 and sys.argv[3] == 'koyu'
 D = os.path.dirname(os.path.abspath(__file__))
 KURALLAR = re.search(r'KURALLAR = r"""(.*?)"""', open(os.path.join(D, 'telefon_kontrol.py'), encoding='utf-8').read(), re.S).group(1)
@@ -14,6 +15,7 @@ import urllib.parse
 async def calis(b, W, H, ilk):
     k = f'{OUT}/{W}'; os.makedirs(k, exist_ok=True)
     c = await b.new_context(viewport={'width': W, 'height': H}, device_scale_factor=2, is_mobile=True, has_touch=True, locale='tr-TR', timezone_id='Europe/Istanbul', reduced_motion='reduce')
+    await yazi_tipi(c)
     pg = await c.new_page(); hata = []; pg.on('pageerror', lambda e: hata.append(str(e)))
     await pg.clock.set_fixed_time('2026-11-20T16:40:00+03:00')
     await pg.goto(f'http://localhost:{PORT}/#k=x'); await pg.wait_for_selector('.ozet-kart'); await pg.wait_for_timeout(1200)

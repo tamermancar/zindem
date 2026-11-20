@@ -29,6 +29,21 @@ window.ZA = function (Z) {
       ant: [{ k: 'a', ad: 'Lastikle tüm vücut', h: [['h027', 'isinma', 1, 10, 10], ['h012', 'ana', 2, 12, 15], ['h011', 'ana', 3, 10, 15], ['h022', 'ana', 2, 12, 12], ['h023', 'ana', 2, 10, 15, '', 0], ['h053', 'ana', 3, 10, 12], ['h050', 'ana', 2, 12, 15], ['h040', 'ana', 2, 6, 6, '', 0]] }] }
   ];
 
+  /* 1.10.1: Yaş ve deneyim. Kaynak: DSÖ 2020 (65+ için denge ve güç ağırlıklı çok yönlü hareket),
+     ACSM 2009 ilerleme modelleri (yeni başlayan = hiç yapmamış ya da birkaç yıldır ara vermiş; orta = yaklaşık 6 aydır düzenli),
+     ACSM 2011 (yeni başlayanlarda ve yaşlılarda tek set). Kurallar sadece hazır programın başlangıcını ve sırasını etkiler. */
+  var DENEYIM = [['yeni', 'Yeni başlıyorum', 'Hiç yapmadım ya da birkaç yıldır ara verdim'], ['orta', 'Bir süredir yapıyorum', 'Yaklaşık 6 aydır düzenli'], ['ileri', 'Uzun süredir yapıyorum', 'Bir yıldan fazla, düzenli']];
+  function yas() { var y = +Z.ayar('dogum_yili', ''); return y > 1900 ? +S.bugun.slice(0, 4) - y : null; }
+  function hazirSirali() {
+    var y = yas(), d = Z.ayar('ant_deneyim', '');
+    return HAZIR.map(function (p, i) { var uy = (y != null && y >= 65 && p.id === 'hz-denge') || (d === 'yeni' && (y == null || y < 65) && p.id === 'hz-tum'); return { p: p, uygun: uy, i: i }; })
+      .sort(function (a, b) { return (b.uygun - a.uygun) || (a.i - b.i); });
+  }
+  function hazirSatir(x, attr) {
+    return '<button class="t2-satir" ' + attr + '="' + x.p.id + '"><span><b>' + esc(x.p.ad) + (x.uygun ? ' <span class="etiket">Sana uygun</span>' : '') + '</b><small>' + esc(x.p.alt) + '</small></span>' + ik('chevron-right') + '</button>';
+  }
+  function yeniBaslayanMi() { return Z.ayar('ant_deneyim', '') === 'yeni'; }
+
   var A = {
     sekme: 'bugun', programlar: [], antrenmanlar: [], hareketlerim: [], gunler: {}, kayitlar: [], katalog: null, katalogYukleniyor: false,
     gun: '', q: '', f: { uygun: true, bolge: '', poz: '', seviye: '' }, gizliGoster: false, ekstra: {}, acikSet: ''
@@ -165,7 +180,7 @@ window.ZA = function (Z) {
   /* ---------- Ortak parçalar ---------- */
   function ustBolum(sag, ek) {
     var s = [['bugun', 'Bugün'], ['program', 'Programım'], ['hareket', 'Hareketler']];
-    return '<div class="m-ust"><header class="ekran-ust"><h1>Antrenman</h1>' + (sag || '') + '</header>' +
+    return '<div class="m-ust"><header class="ekran-ust">' + Z.profilDugmesi() + '<h1>Antrenman</h1>' + (sag || '') + '</header>' +
       '<div class="grup-cipler m-sekmeler" role="tablist" aria-label="Antrenman">' + s.map(function (x) {
         var on = A.sekme === x[0];
         return '<button class="sekme-ciz' + (on ? ' secili' : '') + '" role="tab" aria-selected="' + on + '" data-a-sekme="' + x[0] + '">' + x[1] + '</button>';
@@ -224,8 +239,8 @@ window.ZA = function (Z) {
       '<button class="ana-dugme" data-a-olustur>' + ik('plus') + 'Kendi programını oluştur</button>' +
       '<button class="ikinci-dugme" data-a-hazir-liste>Hazır program seç</button>' +
       '<button class="metin-dugme orta" data-a-sekme-git="hareket">Hareketlere göz at ' + ik('chevron-right') + '</button></section>' +
-      '<div class="bolum-baslik">Hazır programlar</div><section class="kart an-kart">' + HAZIR.map(function (p) {
-        return '<button class="t2-satir" data-a-hazir="' + p.id + '"><span><b>' + esc(p.ad) + '</b><small>' + esc(p.alt) + '</small></span>' + ik('chevron-right') + '</button>';
+      '<div class="bolum-baslik">Hazır programlar</div><section class="kart an-kart">' + hazirSirali().map(function (x) {
+        return hazirSatir(x, 'data-a-hazir');
       }).join('') + '</section>';
   }
   function kayitliGun(g) { return !!(A.gunler[g] && /tamam|yarım/.test(A.gunler[g]['Durum'])) || gunKayitlari(g).length > 0; }
@@ -349,14 +364,14 @@ window.ZA = function (Z) {
       return '<button class="t2-satir" data-a-etkin="' + x.id + '"><span><b>' + esc(x.ad) + '</b><small>Bu programa geç</small></span>' + ik('chevron-right') + '</button>';
     }).join('') + '</section>';
     h += '<button class="metin-dugme orta" data-a-yeni-program>' + ik('plus') + 'Yeni program</button>' +
-      '<button class="metin-dugme orta" data-a-tanisma>Ekipman ve dikkat edilecek bölgeler ' + ik('chevron-right') + '</button>';
+      '<button class="metin-dugme orta" data-a-tanisma>Ekipman, bölgeler ve deneyim ' + ik('chevron-right') + '</button>';
     return h;
   }
   function kisaAd(ad) { var a = String(ad).split(' ')[0]; return a.length > 6 ? a.slice(0, 5) + '.' : a; }
   function hareketEkrani() {
     if (!A.katalog) return ustBolum() + '<p class="t2-not t2-orta">Hareketler yükleniyor…</p>';
     var r = suz(A.q);
-    var h = ustBolum('<button class="ekle-dugme" data-a-kendi>' + ik('plus') + 'Kendi hareketin</button>', aramaKutusu('a-ara', A.q) + filtreCipleri());
+    var h = ustBolum('<button class="ekle-dugme" data-a-kendi aria-label="Kendi hareketini ekle">' + ik('plus') + '<span class="dar-gizle">Kendi hareketin</span></button>', aramaKutusu('a-ara', A.q) + filtreCipleri());
     h += '<div id="a-liste">' + hareketListesiHtml(r) + '</div>';
     return h;
   }
@@ -374,7 +389,7 @@ window.ZA = function (Z) {
 
   /* ---------- Bağlama ---------- */
   function bagla(ana) {
-    ana.querySelectorAll('[data-a-sekme]').forEach(function (b) { b.onclick = function () { A.sekme = b.getAttribute('data-a-sekme'); Z.ciz(); window.scrollTo(0, 0); }; });
+    ana.querySelectorAll('[data-a-sekme]').forEach(function (b) { b.onclick = function () { var y = b.getAttribute('data-a-sekme'); if (y === A.sekme) return; Z.sekmeGec('antrenman', A.sekme, y, function () { A.sekme = y; Z.ciz(); }); }; });
     ana.querySelectorAll('[data-a-sekme-git]').forEach(function (b) { b.onclick = function () { A.sekme = b.getAttribute('data-a-sekme-git'); Z.ciz(); window.scrollTo(0, 0); }; });
     ana.querySelectorAll('[data-a-olustur]').forEach(function (b) { b.onclick = function () { if (!Z.ayar('ant_tanisma', '')) tanisma(1, function () { programDuzenle(null); }); else programDuzenle(null); }; });
     ana.querySelectorAll('[data-a-hazir-liste]').forEach(function (b) { b.onclick = hazirListe; });
@@ -759,14 +774,17 @@ window.ZA = function (Z) {
 
   /* ---------- Seni tanıyalım (4 adım, atlanabilir) ---------- */
   function tanisma(adim, sonra) {
-    var c = { yer: Z.ayar('ant_yer', ''), ekipman: ayarJson('ant_ekipman', []), durum: Z.ayar('ant_hareket', ''), hassas: ayarJson('ant_hassas', []), uzuv: ayarJson('ant_uzuv', {}) };
+    var c = { yer: Z.ayar('ant_yer', ''), ekipman: ayarJson('ant_ekipman', []), durum: Z.ayar('ant_hareket', ''), hassas: ayarJson('ant_hassas', []), uzuv: ayarJson('ant_uzuv', {}),
+      yil: Z.ayar('dogum_yili', ''), deneyim: Z.ayar('ant_deneyim', '') };
     function kaydet() {
       Z.ayarYaz('ant_yer', c.yer); Z.ayarYaz('ant_ekipman', JSON.stringify(c.ekipman)); Z.ayarYaz('ant_hareket', c.durum || 'ayakta');
       Z.ayarYaz('ant_hassas', JSON.stringify(c.hassas));
       var u = {}; Object.keys(c.uzuv).forEach(function (k) { if (c.hassas.indexOf(k) >= 0 && c.uzuv[k] && c.uzuv[k].durum) u[k] = c.uzuv[k]; });
       Z.ayarYaz('ant_uzuv', JSON.stringify(u)); Z.ayarYaz('ant_tanisma', '1');
+      if (String(c.yil) !== String(Z.ayar('dogum_yili', ''))) Z.ayarYaz('dogum_yili', c.yil);
+      if (c.deneyim !== Z.ayar('ant_deneyim', '')) Z.ayarYaz('ant_deneyim', c.deneyim);
     }
-    function adimlar() { return '<div class="t2-adimlar" role="img" aria-label="' + adim + '. adım, 4 adımdan">' + [1, 2, 3, 4].map(function (i) { return '<span class="' + (i <= adim ? 'dolu' : '') + '"></span>'; }).join('') + '</div>'; }
+    function adimlar() { return '<div class="t2-adimlar" role="img" aria-label="' + adim + '. adım, 5 adımdan">' + [1, 2, 3, 4, 5].map(function (i) { return '<span class="' + (i <= adim ? 'dolu' : '') + '"></span>'; }).join('') + '</div>'; }
     function cip(k, d, ad, on) { return '<button class="cip' + (on ? ' secili' : '') + '" data-t="' + k + '" data-d="' + esc(d) + '" aria-pressed="' + !!on + '">' + esc(ad) + '</button>'; }
     function icerik() {
       var h = '';
@@ -789,21 +807,34 @@ window.ZA = function (Z) {
             '<p class="t2-not t2-sessiz">Sadece hareketleri sana uydurmak için sorulur.</p></div>';
         });
       }
-      return h + '<div class="alt-dugme"><button class="ana-dugme" id="t-devam">' + (adim === 4 ? 'Kaydet' : 'Devam') + '</button></div>';
+      if (adim === 5) h = '<p class="t2-soru">Antrenman deneyimin?</p><ul class="t2-secim">' + DENEYIM.map(function (x) {
+          var on = c.deneyim === x[0]; return '<li><button class="' + (on ? 'secili' : '') + '" aria-pressed="' + on + '" data-t="deneyim" data-d="' + x[0] + '"><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span>' + (on ? ik('check') : '') + '</button></li>'; }).join('') + '</ul>' +
+        '<div class="ayar-satir t2-yil"><label for="t-yil"><b>Doğum yılın</b><small>İsteğe bağlı · 65 yaş ve üstüne denge hareketleri önerilir</small></label><span class="birimli"><input id="t-yil" type="text" inputmode="numeric" autocomplete="off" value="' + esc(c.yil) + '" placeholder="—"></span></div>';
+      return h + '<div class="alt-dugme"><button class="ana-dugme" id="t-devam">' + (adim === 5 ? 'Kaydet' : 'Devam') + '</button></div>';
     }
     function bagla2(p) {
       p.querySelectorAll('[data-t]').forEach(function (b) { b.onclick = function () {
         var k = b.getAttribute('data-t'), d = b.getAttribute('data-d');
+        var yi = $('#t-yil'); if (yi) c.yil = yi.value.trim();
         if (k === 'yer' || k === 'durum') c[k] = d;
+        else if (k === 'deneyim') c.deneyim = c.deneyim === d ? '' : d;
         else if (k === 'ekipman') { if (d === 'yok') c.ekipman = c.ekipman.indexOf('yok') >= 0 ? [] : ['yok']; else { c.ekipman = c.ekipman.filter(function (x) { return x !== 'yok'; }); var i = c.ekipman.indexOf(d); if (i >= 0) c.ekipman.splice(i, 1); else c.ekipman.push(d); } }
         else if (k === 'hassas') { if (d === 'yok') c.hassas = []; else { var j = c.hassas.indexOf(d); if (j >= 0) c.hassas.splice(j, 1); else c.hassas.push(d); } }
         Z.pencereIcerik(icerik(), bagla2, true); }; });
       p.querySelectorAll('[data-u]').forEach(function (b) { b.onclick = function () {
+        var yi2 = $('#t-yil'); if (yi2) c.yil = yi2.value.trim();
         var u = c.uzuv[b.getAttribute('data-u')];
         if (b.hasAttribute('data-ut')) u.taraf = b.getAttribute('data-ut'); else u.durum = u.durum === b.getAttribute('data-ud') ? '' : b.getAttribute('data-ud');
         Z.pencereIcerik(icerik(), bagla2, true); }; });
       $('#t-devam').onclick = function () {
         if (adim === 4) {
+          var eksik0 = Object.keys(UZUV).filter(function (b) { return c.hassas.indexOf(b) >= 0 && c.uzuv[b] && c.uzuv[b].durum && !c.uzuv[b].taraf; })[0];
+          if (eksik0) { Z.bildir('⚠ ' + UZUV[eksik0] + ' için tarafı seç'); return; }
+        }
+        if (adim === 5) {
+          var yv = $('#t-yil').value.trim(), yn = +yv, buYil = +S.bugun.slice(0, 4);
+          if (yv && (!/^\d{4}$/.test(yv) || yn < 1900 || yn > buYil)) { Z.bildir('⚠ Doğum yılını 4 haneli yaz'); return; }
+          c.yil = yv;
           var eksik = Object.keys(UZUV).filter(function (b) { return c.hassas.indexOf(b) >= 0 && c.uzuv[b] && c.uzuv[b].durum && !c.uzuv[b].taraf; })[0];
           if (eksik) { Z.bildir('⚠ ' + UZUV[eksik] + ' için tarafı seç'); return; }
           kaydet(); sonra(); return;
@@ -819,10 +850,9 @@ window.ZA = function (Z) {
 
   /* ---------- Hazır programlar ---------- */
   function hazirListe() {
-    Z.pencereAc('Hazır programlar', '<section class="an-kart t2-duz">' + HAZIR.map(function (p) {
-      return '<button class="t2-satir" data-hz="' + p.id + '"><span><b>' + esc(p.ad) + '</b><small>' + esc(p.alt) + '</small></span>' + ik('chevron-right') + '</button>';
-    }).join('') + '</section>', function (pp) { pp.querySelectorAll('[data-hz]').forEach(function (b) { b.onclick = function () { hazirOnizle(b.getAttribute('data-hz')); }; }); });
+    Z.pencereAc('Hazır programlar', '<section class="an-kart t2-duz">' + hazirSirali().map(function (x) { return hazirSatir(x, 'data-hz'); }).join('') + '</section>', function (pp) { pp.querySelectorAll('[data-hz]').forEach(function (b) { b.onclick = function () { hazirOnizle(b.getAttribute('data-hz')); }; }); });
   }
+  function setSay(x) { return yeniBaslayanMi() && x[1] === 'ana' ? 1 : x[2]; }
   function hazirOnizle(id) {
     var hz = HAZIR.filter(function (x) { return x.id === id; })[0]; if (!hz) return;
     if (!A.katalog) { katalogGetir(); Z.bildir('Hareketler yükleniyor…'); return; }
@@ -831,10 +861,11 @@ window.ZA = function (Z) {
     hz.ant.forEach(function (a) {
       c += '<div class="bolum-baslik">' + esc(a.ad) + '</div><section class="an-kart t2-duz">' + a.h.map(function (x) {
         var hh = hBul(x[0]); if (!hh) return '';
-        return '<div class="t2-hr"><button class="t2-hr-bilgi" data-a-detay="' + hh.id + '"><b>' + esc(hh.ad) + '</b><small>' + (x[1] === 'isinma' ? 'Isınma · ' : '') + x[2] + ' × ' + (x[3] === x[4] ? x[3] : x[3] + '–' + x[4]) + (x[5] === 'süre' ? ' sn' : '') + '</small></button></div>';
+        return '<div class="t2-hr"><button class="t2-hr-bilgi" data-a-detay="' + hh.id + '"><b>' + esc(hh.ad) + '</b><small>' + (x[1] === 'isinma' ? 'Isınma · ' : '') + setSay(x) + ' × ' + (x[3] === x[4] ? x[3] : x[3] + '–' + x[4]) + (x[5] === 'süre' ? ' sn' : '') + '</small></button></div>';
       }).join('') + '</section>';
     });
-    c += '<p class="t2-kaynak">' + esc(hz.kaynak) + '</p><div class="alt-dugme"><button class="ana-dugme" id="hz-kullan">Bu programla başla</button></div>';
+    if (yeniBaslayanMi()) c += '<p class="t2-not">Yeni başladığın için ana hareketler 1 set. Programım\'dan artırabilirsin.</p>';
+    c += '<p class="t2-kaynak">' + esc(hz.kaynak) + (yeniBaslayanMi() ? ' · set sayısı: ACSM' : '') + '</p><div class="alt-dugme"><button class="ana-dugme" id="hz-kullan">Bu programla başla</button></div>';
     Z.pencereAc(esc(hz.ad), c, function (pp) {
       pp.querySelectorAll('[data-a-detay]').forEach(function (b) { b.onclick = function () { detay(b.getAttribute('data-a-detay')); }; });
       $('#hz-kullan').onclick = function () {
@@ -842,7 +873,7 @@ window.ZA = function (Z) {
         hz.ant.forEach(function (a) {
           var id = Z.kimlik('N'); map[a.k] = id;
           t.antrenmanlar.push({ id: id, ad: a.ad, hareketler: a.h.filter(function (x) { return hBul(x[0]); }).map(function (x) {
-            var hh = hBul(x[0]); return { h: x[0], ad: hh.ad, bolum: x[1], set: x[2], alt: x[3], ust: x[4], tur: x[5] || (hh.tur === 'süre' ? 'süre' : 'tekrar'), dinlenme: x[1] === 'isinma' ? 0 : 60, kisa: x[6] === 0 ? 0 : 1, taraf: !!hh.taraf };
+            var hh = hBul(x[0]); return { h: x[0], ad: hh.ad, bolum: x[1], set: setSay(x), alt: x[3], ust: x[4], tur: x[5] || (hh.tur === 'süre' ? 'süre' : 'tekrar'), dinlenme: x[1] === 'isinma' ? 0 : 60, kisa: x[6] === 0 ? 0 : 1, taraf: !!hh.taraf };
           }) });
         });
         Object.keys(hz.plan).forEach(function (g) { t.program.plan[g] = map[hz.plan[g]]; });

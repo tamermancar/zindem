@@ -1,0 +1,19 @@
+/* Profil simgesi taslağı */
+.sg-av { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; width: 56px; height: 56px; flex: none; }
+.sg-av img { width: 62%; height: 62%; display: block; }
+.sg-a { background: var(--yumusak); }
+.sg-b { background: var(--sg-renk); color: var(--beyaz); }
+.sg-b .ikon { width: 28px; height: 28px; }
+.sg-harf { background: linear-gradient(135deg, var(--marka), var(--marka-2)); color: var(--beyaz); font-weight: 800; font-size: 19px; }
+.profil.sg-dolu { background: none; overflow: hidden; }
+.sg-av.sg-ust { width: 48px; height: 48px; }
+.sg-b.sg-ust .ikon { width: 24px; height: 24px; }
+.sg-buyuk { width: 88px; height: 88px; } .sg-b.sg-buyuk .ikon { width: 42px; height: 42px; }
+.sg-izgara { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; justify-items: center; }
+.sg-sec { border: 0; background: transparent; padding: 4px; border-radius: 50%; min-width: 64px; min-height: 64px; display: flex; align-items: center; justify-content: center; }
+.sg-sec.secili { box-shadow: 0 0 0 3px var(--ana); }
+.sg-profil { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 8px 0 6px; }
+.ekran-ust .profil.sg-kucuk { width: 40px; height: 40px; margin-right: 10px; }
+.ekran-ust .profil.sg-kucuk .sg-av { width: 40px; height: 40px; }
+.ekran-ust .profil.sg-kucuk .sg-b .ikon { width: 20px; height: 20px; }
+.ekran-ust { align-items: center; }

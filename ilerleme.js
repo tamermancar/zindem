@@ -44,6 +44,7 @@ window.ZI = function (Z) {
         (c.a || []).forEach(function (x) { I.veri.a[x[0]] = { ant: x[1], ad: x[2], durum: x[3], kisa: x[4], yapilan: x[5], hedef: x[6] }; });
         I.veri.k = (c.k || []).map(function (x) { return { g: x[0], ant: x[1], h: x[2], ad: x[3], set: x[4], tekrar: x[5] }; });
         (I.bekleyen || []).forEach(uygula); I.bekleyen = [];
+        if (I.acilacak) { var ac = I.acilacak; I.acilacak = ''; olcumDetay(ac); }
       }
       if (S.ekran === 'ilerleme') Z.ciz();
     }).catch(function () { I.yukleniyor = false; I.hata = 'internet'; if (S.ekran === 'ilerleme') Z.ciz(); });
@@ -202,7 +203,7 @@ window.ZI = function (Z) {
   /* ---------- Çerçeve ---------- */
   function ust() {
     var t = I.tur, ref = I.ref || bugun();
-    return '<div class="m-ust"><header class="ekran-ust"><h1>İlerleme</h1></header>' +
+    return '<div class="m-ust"><header class="ekran-ust">' + Z.profilDugmesi() + '<h1>İlerleme</h1></header>' +
       '<div class="grup-cipler m-sekmeler" role="tablist" aria-label="Dönem">' + TURLER.map(function (x) {
         return '<button class="sekme-ciz' + (x[0] === t ? ' secili' : '') + '" role="tab" aria-selected="' + (x[0] === t) + '" data-i-tur="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
       '<div class="il-gezgin"><button class="tn-ok" data-i-git="-1" aria-label="Önceki dönem">' + ik('chevron-left') + '</button><b>' + donemAdi(t, ref) + '</b>' +
@@ -374,7 +375,7 @@ window.ZI = function (Z) {
   }
   function ciz(ana) {
     if (!I.veri) {
-      ana.innerHTML = '<div class="m-ust"><header class="ekran-ust"><h1>İlerleme</h1></header></div>' +
+      ana.innerHTML = '<div class="m-ust"><header class="ekran-ust">' + Z.profilDugmesi() + '<h1>İlerleme</h1></header></div>' +
         (I.hata ? '<section class="kart"><b>Veriler alınamadı.</b><p class="il-bos-satir">' + (I.hata === 'internet' ? 'İnternet bağlantını kontrol et.' : esc(I.hata)) + '</p><button class="ana-dugme" id="il-tekrar">Tekrar dene</button></section>'
           : '<p class="yukleniyor">Gidişatın hazırlanıyor…</p>');
       var t = $('#il-tekrar'); if (t) t.onclick = function () { yukle(true); Z.ciz(); };
@@ -382,7 +383,7 @@ window.ZI = function (Z) {
     }
     var t2 = I.tur, ref = I.ref || bugun(), gz = gizli(), h;
     if (hicVeriYok() && !I.gecildi) {
-      h = '<div class="m-ust"><header class="ekran-ust"><h1>İlerleme</h1></header></div>' +
+      h = '<div class="m-ust"><header class="ekran-ust">' + Z.profilDugmesi() + '<h1>İlerleme</h1></header></div>' +
         '<section class="kart il-basla"><span class="il-basla-ikon">' + ik('chart-area-line') + '</span><h2>Gidişatını burada göreceksin</h2>' +
         '<p>Kilonu ve belini gir. Diğerleri kayıt ekledikçe gelir.</p><button class="ana-dugme" data-i-olcum>' + ik('plus') + 'İlk ölçümünü gir</button>' +
         '<button class="metin-dugme orta" id="il-gec">Şimdilik geç</button></section>' +
@@ -404,7 +405,7 @@ window.ZI = function (Z) {
     bagla(ana);
   }
   function bagla(ana) {
-    ana.querySelectorAll('[data-i-tur]').forEach(function (b) { b.onclick = function () { I.tur = b.getAttribute('data-i-tur'); I.ref = ''; Z.titret(); Z.ciz(); window.scrollTo(0, 0); }; });
+    ana.querySelectorAll('[data-i-tur]').forEach(function (b) { b.onclick = function () { var y = b.getAttribute('data-i-tur'); if (y === I.tur) return; Z.sekmeGec('ilerleme', I.tur, y, function () { I.tur = y; I.ref = ''; Z.titret(); Z.ciz(); }); }; });
     ana.querySelectorAll('[data-i-git]').forEach(function (b) { b.onclick = function () { var r = donemKaydir(I.tur, I.ref || bugun(), +b.getAttribute('data-i-git')); I.ref = r >= bugun() || donemGunleri(I.tur, r).indexOf(bugun()) >= 0 ? '' : r; Z.ciz(); }; });
     ana.querySelectorAll('[data-i-olcum]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); olcumPenceresi(); }; });
     ana.querySelectorAll('[data-i-detay]').forEach(function (b) { b.onclick = function () { detayAc(b.getAttribute('data-i-detay')); }; });
@@ -510,7 +511,7 @@ window.ZI = function (Z) {
       return h + '<div class="alt-dugme"><button class="ana-dugme" id="od-ekle">' + ik('plus') + 'Ölçüm ekle</button></div>';
     }
     function yenile() { Z.pencereIcerik(icerik(), bagla2, true); $('.pencere-bas .grup-cipler').outerHTML = sekmeler(turlar.map(function (x) { return OLCU[x][0]; }), si, 'data-od-tur'); baglaSekme(); }
-    function baglaSekme() { document.querySelectorAll('[data-od-tur]').forEach(function (b) { b.onclick = function () { si = +b.getAttribute('data-od-tur'); yenile(); }; }); }
+    function baglaSekme() { document.querySelectorAll('[data-od-tur]').forEach(function (b) { b.onclick = function () { var y = +b.getAttribute('data-od-tur'); if (y === si) return; Z.pencereSekmeGec('olcu', si, y, function () { si = y; yenile(); }); }; }); }
     function bagla2(p) {
       grafikleriCiz(p); donemBagla(p, yenile);
       var e = $('#od-ekle'); if (e) e.onclick = function () { olcumPenceresi(turlar[si]); };
@@ -580,7 +581,7 @@ window.ZI = function (Z) {
       grafikleriCiz(p); donemBagla(p, yenile);
       p.querySelectorAll('.il-dokun').forEach(function (r) { r.onclick = function () { secili = +r.getAttribute('data-dilim'); Z.pencereIcerik(icerik(), bagla2, true); }; });
       p.querySelectorAll('[data-md-gun]').forEach(function (b) { b.onclick = function () { Z.pencereKapat(); Z.bugunGit(b.getAttribute('data-md-gun')); }; });
-      document.querySelectorAll('[data-md-tur]').forEach(function (b) { b.onclick = function () { si = +b.getAttribute('data-md-tur'); document.querySelectorAll('[data-md-tur]').forEach(function (x, j) { x.classList.toggle('secili', j === si); x.setAttribute('aria-selected', j === si); }); yenile(); }; });
+      document.querySelectorAll('[data-md-tur]').forEach(function (b) { b.onclick = function () { var y = +b.getAttribute('data-md-tur'); if (y === si) return; Z.pencereSekmeGec('metrik', si, y, function () { si = y; document.querySelectorAll('[data-md-tur]').forEach(function (x, j) { x.classList.toggle('secili', j === si); x.setAttribute('aria-selected', j === si); }); yenile(); }); }; });
     }
     var baslik = turlar.length > 1 ? 'Kalori ve protein' : ADLAR[turlar[0]];
     Z.pencereAc(baslik, icerik(), bagla2, false, turlar.length > 1 ? sekmeler(turlar.map(function (x) { return ADLAR[x]; }), si, 'data-md-tur') : '');
@@ -683,7 +684,7 @@ window.ZI = function (Z) {
     }
     function bagla2(p) {
       grafikleriCiz(p);
-      document.querySelectorAll('[data-ag-sek]').forEach(function (b) { b.onclick = function () { si = +b.getAttribute('data-ag-sek'); document.querySelectorAll('[data-ag-sek]').forEach(function (x, j) { x.classList.toggle('secili', j === si); x.setAttribute('aria-selected', j === si); }); Z.pencereIcerik(icerik(), bagla2, true); }; });
+      document.querySelectorAll('[data-ag-sek]').forEach(function (b) { b.onclick = function () { var y = +b.getAttribute('data-ag-sek'); if (y === si) return; Z.pencereSekmeGec('agri', si, y, function () { si = y; document.querySelectorAll('[data-ag-sek]').forEach(function (x, j) { x.classList.toggle('secili', j === si); x.setAttribute('aria-selected', j === si); }); Z.pencereIcerik(icerik(), bagla2, true); }); }; });
     }
     Z.pencereAc('Ağrı ve sağlık notları', icerik(), bagla2, false, sekmeler(SEK.map(function (x) { return x[1]; }), si, 'data-ag-sek'));
   }
@@ -759,5 +760,12 @@ window.ZI = function (Z) {
     Z.pencereAc('Kartları düzenle', icerik(), bagla2, true);
   }
 
-  return { ciz: ciz, yukle: yukle, uygula: uygula, sifirla: function () { I.veri = null; } };
+  // 1.10.1: Profil penceresi için son kilo ve hedef; dokununca Kilo ve ölçüler açılır
+  function kiloOzet() {
+    if (!I.veri) return '';
+    var e = egilim(olcumler('kilo')), hk = hedefKilo();
+    return e.length ? f(e[e.length - 1].v, 1) + ' kg' + (hk != null ? ' · hedef ' + f(hk, hk % 1 ? 1 : 0) : '') : '';
+  }
+  function kiloAc() { if (I.veri) olcumDetay('kilo'); else { I.acilacak = 'kilo'; yukle(); } }
+  return { ciz: ciz, yukle: yukle, uygula: uygula, sifirla: function () { I.veri = null; }, kiloOzet: kiloOzet, kiloAc: kiloAc };
 };

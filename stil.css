@@ -1190,3 +1190,33 @@ html[data-tema="koyu"] .il-kalori { color: var(--ana-yazi); }
 .il-har-liste em b { display: inline; }
 .il-gun-liste em.asti { color: var(--y-kal-as); } .il-gun-liste em.p { color: var(--soluk); min-width: 44px; text-align: right; } .il-gun-liste em.yok { color: var(--soluk); }
 .il-gun-liste .ikon, .il-har-liste .ikon, .il-olcum-liste .ikon { width: 18px; height: 18px; color: var(--soluk); }
+
+/* ===== 1.10.1 ===== */
+/* Antrenman/İlerleme: sabit başlığın alt solması gün şeridinin üstüne binmesin */
+.m-ust + .serit { margin-top: 10px; }
+/* Alt menü: uzun ad seçiliyken de sığsın (diğer düğmeler gerekirse biraz daralır) */
+.alt-menu { gap: 4px; }
+.sekme { flex: 0 1 52px; min-width: 44px; }
+.sekme.acik { flex: 0 1 auto; min-width: 0; padding: 0 16px; overflow: hidden; }
+.sekme.acik b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sekme.acik .ikon { flex: none; }
+/* Profil düğmesi her ana ekranın başlığında (Bugün'dekinin aynısı, biraz küçük) */
+.ekran-ust { align-items: center; }
+.ekran-ust .profil.kucuk { width: 40px; height: 40px; font-size: 15px; }
+.ekran-ust .profil.kucuk .ikon { width: 20px; height: 20px; }
+.ekran-ust h1 { flex: 1; min-width: 0; }
+/* Kendi besini: dokununca düzenle */
+button.liste-satir.duzenlenir { width: 100%; border: 0; border-top: 1px dashed var(--cizgi); background: transparent; text-align: left; position: relative; padding-right: 36px; color: var(--yazi); font: inherit; }
+button.liste-satir .duz-ikon { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--soluk); }
+.form-not { margin: 6px 0 0; font-size: 12.5px; color: var(--soluk); }
+.alt-dugme.iki-dugme { display: flex; gap: 8px; }
+.alt-dugme.iki-dugme > button { margin-top: 0; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.alt-dugme.iki-dugme .ikon { width: 18px; height: 18px; }
+/* Profili düzenle: kilo satırı */
+.profil-kilo { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 52px; margin-top: 8px; border: 0; border-top: 1px solid var(--cizgi); border-bottom: 1px solid var(--cizgi); background: transparent; padding: 0; color: var(--yazi); }
+.profil-kilo span { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; text-align: left; }
+.profil-kilo span .ikon { width: 20px; height: 20px; color: var(--kilo); }
+.profil-kilo b { font-size: 14.5px; font-weight: 700; color: var(--soluk); }
+.birimli small:empty { display: none; }
+/* Dar ekranda başlıktaki ekle düğmesi sadece simge olur (başlık kesilmesin) */
+@media (max-width: 380px) { .ekran-ust .ekle-dugme .dar-gizle { display: none; } .ekran-ust .ekle-dugme { width: 44px; padding: 0; justify-content: center; } }

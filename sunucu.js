@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.10.0';
+var SUNUCU_SURUM = '1.10.1';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -100,6 +100,7 @@ var AYAR_BILGI = {
   ant_ekipman: ['antrenman', 'Ekipman (JSON liste)'], ant_hareket: ['antrenman', 'Hareket durumu: ayakta / destekli / oturarak / sandalye'],
   ant_hassas: ['antrenman', 'Dikkat edilecek bölgeler (JSON)'], ant_uzuv: ['antrenman', 'Uzuv durumu (JSON)'], ant_ozet_hafta: ['antrenman', 'Haftanın özeti en son hangi hafta kapatıldı'],
   boy: ['profil', 'Boy (cm) · vücut kitle indeksi için'],
+  dogum_yili: ['profil', 'Doğum yılı · hareket önerileri için (isteğe bağlı)'], ant_deneyim: ['antrenman', 'Deneyim: yeni · ara · duzenli'],
   olcu_ek: ['ilerleme', 'Takip edilen ek ölçüler (virgülle: boyun, omuz, gogus, pazu, kalca, uyluk, baldir)'],
   il_gizli: ['ilerleme', 'İlerleme\'de gizlenen kartlar (virgülle)'], il_ozet_ay: ['ilerleme', 'Aylık özet kartı en son hangi ay kapatıldı']
 };
@@ -410,6 +411,13 @@ function islemYap_(is) {
         'ID': v.id, 'Ad': v.ad, 'Kategori': v.kategori, 'Katalog ID': v.katalogId || '', 'Temel': v.temel,
         'kcal': v.kcal, 'Protein': v.p, 'Ölçüler': v.olculer || '', 'Kaynak': v.kaynak || 'Elle eklendi', 'Not': v.not || '', 'Öğünler': v.ogunler || ''
       });
+      return;
+    case 'besin_guncelle': // 1.10.1: kendi eklediği besini düzenler (geçmiş kayıtlar adı ve değeri kendileri tutar, değişmez)
+      var rb = satirBul_('Besinlerim', 'ID', v.id); if (!rb) return;
+      [['Ad', v.ad], ['Kategori', v.kategori], ['Temel', v.temel], ['kcal', v.kcal], ['Protein', v.p], ['Ölçüler', v.olculer || '']].forEach(function (x) { if (x[1] !== undefined) hucreYaz_('Besinlerim', rb, x[0], x[1]); });
+      return;
+    case 'besin_sil':
+      var rs = satirBul_('Besinlerim', 'ID', v.id); if (rs) sayfa_('Besinlerim').deleteRow(rs);
       return;
     case 'tarif_kaydet': // varsa günceller: malzeme satırları silinip yeniden yazılır
       var zaman = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm');

@@ -1,6 +1,7 @@
 """1.7 Ayarlar / Mutfak uçtan uca testi (sahte tablo). Kullanım: python3 -I ayar_test.py <port> <çıktı>"""
 import asyncio, json, sys, os, urllib.request
 from playwright.async_api import async_playwright
+import os as _o; exec(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'yazitipi.py'), encoding='utf-8').read())
 PORT, OUT = sys.argv[1], sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
 def tablo(ad):
@@ -14,6 +15,7 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
         c = await b.new_context(viewport={'width': 390, 'height': 800}, device_scale_factor=2, is_mobile=True, has_touch=True, locale='tr-TR', timezone_id='Europe/Istanbul', reduced_motion='reduce')
+        await yazi_tipi(c)
         pg = await c.new_page(); hata = []
         pg.on('pageerror', lambda e: hata.append(str(e)))
         await pg.clock.set_fixed_time('2026-11-19T13:20:00+03:00')

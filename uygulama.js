@@ -17,8 +17,8 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.10.0';
-  var SURUM = '1.10';
+  var SUNUCU_SURUM = '1.10.1';
+  var SURUM = '1.10.1';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -488,7 +488,7 @@
     var pg = S.gun.split('-'), dg = new Date(+pg[0], +pg[1] - 1, +pg[2]);
     var ust = bugun ? selamKisa() : (gunKaydir(S.bugun, -1) === S.gun ? 'Dün · ' : '') + GUNLER[dg.getDay()];
     var alt = bugun ? esc(ayar('ad', '') || 'Zindem') : dg.getDate() + ' ' + AYLAR[dg.getMonth()] + (dg.getFullYear() !== new Date().getFullYear() ? ' ' + dg.getFullYear() : '');
-    return '<header class="ust-satir" id="ust-satir"><button class="profil" id="profil-dugme" aria-haspopup="dialog" aria-label="Profil ve ayarlar menüsü">' + (bh ? esc(bh) : ik('user')) + '</button>' +
+    return '<header class="ust-satir" id="ust-satir">' + profilDugmesi('profil-dugme') +
       '<div class="selam"><small>' + ust + '</small><h1>' + alt + '</h1></div><button id="durum" class="senk" hidden></button>' +
       (bugun ? '' : '<button class="bugune-don" data-bugune>Bugüne dön</button>') +
       '<button class="yuvarlak-dugme" id="agri-dugme" aria-label="Ağrı ve sağlık notu' + (S.agri.length ? ' (' + S.agri.length + ' açık not)' : '') + '">' + ik('bandage') +
@@ -1061,7 +1061,7 @@
   }
   function grupCipleri() {
     var dolu = {};
-    gorunurBesinler().forEach(function (b) { if (!b.benim) dolu[b.grup] = 1; });
+    gorunurBesinler().forEach(function (b) { if (!b.tarif) dolu[b.grup] = 1; });
     var liste = [['oneri', 'Önerilen'], ['benim', 'Benim eklediklerim']].concat(GRUPLAR.filter(function (g) { return dolu[g]; }).map(function (g) { return [g, g]; }));
     var el = $('#grup-cipler'); if (!el) return;
     el.innerHTML = liste.map(function (x) {
@@ -1101,7 +1101,7 @@
         .sort(function (a, b) { return (siraPuani(b, penOgun) - siraPuani(a, penOgun)) || (GRUPLAR.indexOf(a.grup) - GRUPLAR.indexOf(b.grup)) || a.ad.localeCompare(b.ad, 'tr'); }).slice(0, 80);
       if (oneri.length) h += '<div class="bolum-baslik">' + esc(ad) + ' için öneriler</div>' + oneri.map(sonucSatiri).join('');
     } else if (!qs.length) {
-      var grup = gorunurBesinler().filter(function (b) { return grupSec === 'benim' ? b.benim : b.grup === grupSec && !b.benim; })
+      var grup = gorunurBesinler().filter(function (b) { return grupSec === 'benim' ? b.benim : b.grup === grupSec && !b.tarif; })
         .sort(function (a, b) { return (siraPuani(b, penOgun) - siraPuani(a, penOgun)) || (b.benim - a.benim) || a.ad.localeCompare(b.ad, 'tr'); });
       h += grup.length ? grup.map(sonucSatiri).join('') : '<div class="bos">' + (grupSec === 'benim' ? 'Henüz kendi eklediğin bir besin yok. Aşağıdan "Elle ekle" ile ekleyebilirsin.' : 'Bu grupta besin yok.') + '</div>';
     } else {
@@ -1296,7 +1296,7 @@
         if (document.activeElement !== el || !el.scrollIntoView) return;
         // 1.10: kutu klavyeyle birlikte de görünüyorsa liste yerinden oynamaz
         var r = el.getBoundingClientRect(), vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        if (el.type !== 'search' && r.top >= 80 && r.bottom <= vh - 12) return;
+        if (el.type !== 'search' && r.top >= 80 && r.bottom <= vh - 8) return;
         el.scrollIntoView({ block: el.type === 'search' ? 'start' : 'center', behavior: 'smooth' });
       }, 320);
     });
@@ -1868,7 +1868,7 @@
    * Göz atma ve tarif hazırlama yeri. Yemek kaydı sadece Bugün › + Ekle'den yapılır. */
   var M = { sekme: 'tarif', q: '', acik: '' };
   function mutfakCiz(ana) {
-    ana.innerHTML = '<div class="m-ust"><header class="ekran-ust"><h1>Mutfak</h1><button class="ekle-dugme" id="m-yeni">' + ik('plus') + 'Yeni tarif</button></header>' +
+    ana.innerHTML = '<div class="m-ust"><header class="ekran-ust">' + profilDugmesi() + '<h1>Mutfak</h1><button class="ekle-dugme" id="m-yeni" aria-label="Yeni tarif">' + ik('plus') + '<span class="dar-gizle">Yeni tarif</span></button></header>' +
       '<div class="arama-kutu">' + ik('search', 'arama-ikon') + '<label class="gizli-yazi" for="m-ara">Tarif ya da besin ara</label><input id="m-ara" class="arama" type="search" placeholder="' + (M.sekme === 'tarif' ? 'Tarif ara' : 'Besin ara') + '" autocomplete="off" value="' + esc(M.q) + '">' + aramaSil() + '</div>' +
       '<div class="grup-cipler m-sekmeler" role="tablist" aria-label="Mutfak">' +
       [['tarif', 'Tariflerim'], ['besin', 'Besinler']].map(function (x) {
@@ -1882,11 +1882,12 @@
     aramaSilBagla(a);
     $('#m-yeni').onclick = function () { tarifAc({ yeni: true, mutfak: true }); };
     document.querySelectorAll('[data-m-sekme]').forEach(function (b) {
-      b.onclick = function () { var y = b.getAttribute('data-m-sekme'); if (y === M.sekme) return; M.sekme = y; M.q = ''; M.acik = ''; titret(); ciz(); };
+      b.onclick = function () { var y = b.getAttribute('data-m-sekme'); if (y === M.sekme) return; sekmeGec('mutfak', M.sekme, y, function () { M.sekme = y; M.q = ''; titret(); ciz(); }); };
     });
     mutfakBagla();
   }
   function mutfakBagla() {
+    document.querySelectorAll('#m-liste [data-besin-duz]').forEach(function (b) { b.onclick = function () { besinDuzenle(b.getAttribute('data-besin-duz')); }; });
     document.querySelectorAll('#m-liste [data-m-tarif]').forEach(function (b) { b.onclick = function () { tarifAc({ kaynak: b.getAttribute('data-m-tarif'), mutfak: true }); }; });
     document.querySelectorAll('#m-liste [data-lg]').forEach(function (b) {
       b.onclick = function () {
@@ -1917,7 +1918,7 @@
     }
     var h = '<div class="bolum-baslik">Tariflerim</div>';
     h += benim.length ? '<section class="kart m-kart">' + benim.map(satir).join('') + '</section>'
-      : '<div class="bos-not">' + ik('chef-hat') + '<span>' + (qs.length ? 'Bu adla tarifin yok.' : 'Henüz tarifin yok. "Yeni tarif" ile ekleyebilir ya da aşağıdakilerden birini açıp kaydedebilirsin.') + '</span></div>';
+      : '<div class="bos-not">' + ik('chef-hat') + '<span>' + (qs.length ? 'Bu adla tarifin yok.' : 'Henüz tarifin yok. Sağ üstteki + ile ekleyebilir ya da aşağıdakilerden birini açıp kaydedebilirsin.') + '</span></div>';
     if (hazir.length) h += '<div class="bolum-baslik">Hazır tarifler</div><section class="kart m-kart">' + hazir.map(satir).join('') + '</section>';
     return h;
   }
@@ -1929,7 +1930,7 @@
     var h = ''; // 1.8.1: açıklama yazısı kaldırıldı (uzun açıklama gösterilmez kuralı)
     ['Benim eklediklerim'].concat(GRUPLAR, ['Tarif malzemeleri (listede görünmez)']).forEach(function (g) {
       var l = liste.filter(function (b) {
-        return g === 'Benim eklediklerim' ? b.benim : g.indexOf('Tarif malzemeleri') === 0 ? b.malzeme && !b.benim : b.grup === g && !b.benim && !b.malzeme;
+        return g === 'Benim eklediklerim' ? b.benim : g.indexOf('Tarif malzemeleri') === 0 ? b.malzeme && !b.benim : b.grup === g && !b.malzeme; // 1.10.1: kendi besini seçtiği grupta da
       }).sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); });
       if (!l.length) return;
       var ac = !!qs.length || acik === g;
@@ -1937,11 +1938,12 @@
       if (ac) h += l.map(function (b) {
         var temel = b.porsiyon ? '1 porsiyon' : '100 g';
         var olc = b.porsiyon ? '' : b.olcu.map(function (x) { return esc(x[0]) + ' = ' + bicim(x[1], 1) + ' g'; }).join(' · ');
-        return '<div class="liste-satir"><b>' + esc(b.ad) + (b.benim ? ' <span class="etiket">Benim</span>' : '') + '</b>' +
+        var ac = b.benim ? '<button class="liste-satir duzenlenir" data-besin-duz="' + esc(b.id) + '" aria-label="' + esc(b.ad) + ' düzenle">' : '<div class="liste-satir">';
+        return ac + '<b>' + esc(b.ad) + (b.benim ? ' <span class="etiket">Benim</span>' : '') + '</b>' +
           '<span>' + temel + ': ' + bicim(b.kcal) + ' kcal · ' + (b.pYok ? '⚠ protein ?' : bicim(b.p, 1) + ' g protein') + '</span>' +
           (olc ? '<small>' + olc + '</small>' : '') +
           (b.malzemeler ? '<small>Tarif (' + (b.kisi || '?') + ' porsiyon): ' + b.malzemeler.map(function (m) { return esc(m[2]); }).join(', ') + '</small>' : '') +
-          (b.kaynak ? '<small class="kaynak">Kaynak: ' + esc(b.kaynak) + '</small>' : '') + '</div>';
+          (b.kaynak ? '<small class="kaynak">Kaynak: ' + esc(b.kaynak) + '</small>' : '') + (b.benim ? ik('pencil', 'duz-ikon') + '</button>' : '</div>');
       }).join('');
       h += '</section>';
     });
@@ -1965,6 +1967,67 @@
     while (S.gunler[d]) { seri += 1; d = gunKaydir(d, -1); }
     return { seri: seri, gun: g.length, ilk: g[0] || '' };
   }
+  /* ---------- 1.10.1: Profil düğmesi her ana ekranda (aynı bileşen), sekmelerin kendi kaydırma yeri ---------- */
+  function profilGorsel() { var bh = basHarfler(); return bh ? esc(bh) : ik('user'); }
+  function profilDugmesi(id) {
+    return '<button class="profil' + (id ? '' : ' kucuk') + '"' + (id ? ' id="' + id + '"' : '') + ' data-profil aria-haspopup="dialog" aria-label="Profil ve ayarlar menüsü">' + profilGorsel() + '</button>';
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-profil]'); if (b && !b.id) profilMenu(); });
+  var KONUM = {};
+  // Sekme değişince eski sekmenin kaydırma yeri saklanır, yeni sekme kendi yerinden (ilk kez açılıyorsa en üstten) başlar
+  function sekmeGec(anahtar, eski, yeni, uygula) {
+    KONUM[anahtar + '|' + eski] = window.scrollY;
+    uygula();
+    var y = KONUM[anahtar + '|' + yeni] || 0;
+    window.scrollTo(0, y); requestAnimationFrame(function () { window.scrollTo(0, y); });
+  }
+  function pencereSekmeGec(anahtar, eski, yeni, uygula) {
+    var p = $('#pencere'); KONUM['p|' + anahtar + '|' + eski] = p.scrollTop;
+    uygula();
+    p.scrollTop = KONUM['p|' + anahtar + '|' + yeni] || 0;
+  }
+  /* ---------- 1.10.1: Kendi eklediği besini düzenle / sil ---------- */
+  function besinDuzenle(id) {
+    var r = S.besinlerim.filter(function (x) { return x['ID'] === id; })[0], b = S.besinler[id]; if (!r || !b) return;
+    var katalog = !!r['Katalog ID'], temel = String(r['Temel'] || '100 g').indexOf('porsiyon') >= 0 ? '1 porsiyon' : '100 g';
+    var olc = olcuCoz(r['Ölçüler'])[0] || ['', ''];
+    var kats = GRUPLAR.slice(), sec = kats.indexOf(r['Kategori']) >= 0 ? r['Kategori'] : b.grup;
+    var tarifte = S.tarifler.filter(function (t) { return (t.malzemeler || []).some(function (z) { return z.id === id; }); }).map(function (t) { return t.ad; });
+    var h = '<div class="form-alan"><label for="bd-ad">Besinin adı</label><input id="bd-ad" type="text" value="' + esc(r['Ad'] || b.ad) + '"></div>' +
+      '<div class="form-alan"><label for="bd-kat">Besin grubu</label><select id="bd-kat">' + kats.map(function (k) { return '<option' + (k === sec ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="form-alan"><span class="etiket-yazi">Değerler neye göre?</span><div class="cipler"><button class="cip' + (temel === '100 g' ? ' secili' : '') + '" data-bd-temel="100 g">100 g için</button><button class="cip' + (temel !== '100 g' ? ' secili' : '') + '" data-bd-temel="1 porsiyon">1 porsiyon için</button></div></div>' +
+      '<div class="iki-sutun"><div class="form-alan"><label for="bd-kcal">Kalori (kcal)</label><input id="bd-kcal" type="number" inputmode="decimal" min="0" value="' + esc(String(r['kcal'])) + '"></div>' +
+      '<div class="form-alan"><label for="bd-p">Protein (g)</label><input id="bd-p" type="number" inputmode="decimal" min="0" value="' + esc(String(r['Protein'])) + '"></div></div>' +
+      '<div class="iki-sutun" id="bd-olcu-alan"' + (temel === '100 g' ? '' : ' hidden') + '><div class="form-alan"><label for="bd-olcu">Ölçü adı (isteğe bağlı)</label><input id="bd-olcu" type="text" value="' + esc(olc[0]) + '" placeholder="Ör. 1 dilim"></div>' +
+      '<div class="form-alan"><label for="bd-gram">Bu ölçü kaç gram?</label><input id="bd-gram" type="number" inputmode="decimal" min="0" value="' + esc(String(olc[1] || '')) + '"></div></div>' +
+      '<p class="form-not">Eski kayıtlar değişmez.</p>' +
+      '<div class="alt-dugme iki-dugme"><button class="ikinci-dugme tehlike" id="bd-sil">' + ik('trash') + (katalog ? 'Varsayılana dön' : 'Sil') + '</button><button class="ana-dugme" id="bd-kaydet">' + ik('check') + 'Kaydet</button></div>';
+    pencereAc('Besini düzenle', h, function () {
+      document.querySelectorAll('[data-bd-temel]').forEach(function (x) {
+        x.onclick = function () { temel = x.getAttribute('data-bd-temel'); document.querySelectorAll('[data-bd-temel]').forEach(function (y) { y.classList.toggle('secili', y === x); }); $('#bd-olcu-alan').hidden = temel !== '100 g'; };
+      });
+      $('#bd-kaydet').onclick = function () {
+        var ad = $('#bd-ad').value.trim(), kcal = sayi($('#bd-kcal').value), p = sayi($('#bd-p').value);
+        if (!ad || !isFinite(kcal) || !isFinite(p)) { bildir('Ad, kalori ve protein gerekli (etikette protein yoksa 0 yaz)'); return; }
+        var oa = $('#bd-olcu').value.trim(), og = sayi($('#bd-gram').value);
+        var v = { id: id, ad: ad, kategori: $('#bd-kat').value, temel: temel, kcal: kcal, p: p, olculer: temel === '100 g' && oa && isFinite(og) && og > 0 ? oa + '=' + og : '' };
+        islemEkle('besin_guncelle', v);
+        r['Ad'] = ad; r['Kategori'] = v.kategori; r['Temel'] = temel; r['kcal'] = kcal; r['Protein'] = p; r['Ölçüler'] = v.olculer;
+        besinleriKur(); pencereKapat(); titret(); ciz(); bildir('✅ ' + ad + ' güncellendi');
+      };
+      $('#bd-sil').onclick = function () {
+        if (tarifte.length) { bildir('⚠ Bu besin tarifinde kullanılıyor: ' + tarifte.slice(0, 2).join(', ')); return; }
+        var yedek = JSON.parse(JSON.stringify(r));
+        islemEkle('besin_sil', { id: id });
+        S.besinlerim = S.besinlerim.filter(function (x) { return x !== r; });
+        besinleriKur(); pencereKapat(); ciz();
+        bildir((katalog ? 'Varsayılan değerlere dönüldü' : yedek['Ad'] + ' silindi'), 'Geri al', function () {
+          islemEkle('besin_ekle', { id: id, ad: yedek['Ad'], kategori: yedek['Kategori'], katalogId: yedek['Katalog ID'], temel: yedek['Temel'], kcal: yedek['kcal'], p: yedek['Protein'], olculer: yedek['Ölçüler'], kaynak: yedek['Kaynak'], not: yedek['Not'], ogunler: yedek['Öğünler'] });
+          S.besinlerim.push(yedek); besinleriKur(); ciz();
+        });
+      };
+    });
+  }
   function profilMenu() {
     var ad = ayar('ad', ''), bh = basHarfler(), o = kayitOzeti();
     function bilgi(ikon, deger, etiket) { return '<span class="pk-bilgi">' + ik(ikon) + '<b>' + deger + '</b><small>' + etiket + '</small></span>'; }
@@ -1985,12 +2048,23 @@
       $('#pm-gizlilik').onclick = gizlilikAc;
     }, true);
   }
+  // 1.10.1: Ad · Boy · Doğum yılı (ikisi isteğe bağlı); kilo ve hedef sadece gösterilir, dokununca İlerleme › Kilo ve ölçüler
   function profilDuzenle() {
+    var ko = ILR && ILR.kiloOzet ? ILR.kiloOzet() : '', yil = new Date().getFullYear();
     pencereAc('Profili düzenle', '<div class="form-alan"><label for="p-ad">Adın</label><input id="p-ad" type="text" autocomplete="name" value="' + esc(ayar('ad', '')) + '" placeholder="Ad Soyad"></div>' +
+      sayiAlani('p-boy', 'Boy', 'İsteğe bağlı · vücut kitle indeksi için', ayar('boy', ''), 'cm', 1) +
+      sayiAlani('p-yil', 'Doğum yılı', 'İsteğe bağlı · hareket önerileri için', ayar('dogum_yili', ''), '', 1) +
+      '<button class="profil-kilo" id="p-kilo"><span>' + ik('weight') + 'Kilo ve ölçüler</span><b>' + (ko || 'İlerleme\'de') + '</b>' + ik('chevron-right', 'kucuk-ok') + '</button>' +
       '<div class="alt-dugme"><button class="ana-dugme" id="p-kaydet">Kaydet</button></div>', function () {
+        $('#p-kilo').onclick = function () { pencereKapat(); if (ILR) ILR.kiloAc(); };
         $('#p-kaydet').onclick = function () {
-          var v = $('#p-ad').value.trim().replace(/\s+/g, ' ');
+          var v = $('#p-ad').value.trim().replace(/\s+/g, ' '), boy = String($('#p-boy').value).trim(), dy = String($('#p-yil').value).trim();
+          var nb = sayi(boy), ny = sayi(dy);
+          if (boy && (!isFinite(nb) || nb < 100 || nb > 250)) { bildir('⚠ Boyu santimetre olarak yaz (100–250)'); return; }
+          if (dy && (!isFinite(ny) || ny < 1900 || ny > yil || ny % 1)) { bildir('⚠ Doğum yılını 4 haneli yaz'); return; }
           if (v !== ayar('ad', '')) ayarYaz('ad', v);
+          if (boy !== String(ayar('boy', ''))) ayarYaz('boy', boy ? String(Math.round(nb)) : '');
+          if (dy !== String(ayar('dogum_yili', ''))) ayarYaz('dogum_yili', dy ? String(ny) : '');
           ciz(); profilMenu(); bildir('✅ Profil kaydedildi');
         };
       }, false, '', { ad: 'Menü', fn: profilMenu });
@@ -2305,7 +2379,7 @@
       ayar: ayar, ayarYaz: ayarYaz, islemEkle: islemEkle, bildir: bildir, ciz: function () { ciz(); },
       pencereAc: pencereAc, pencereIcerik: pencereIcerik, pencereKapat: pencereKapat, aramaSil: aramaSil, aramaSilBagla: aramaSilBagla,
       gunKaydir: gunKaydir, tarihKisa: tarihKisa, agriKademe: agriKademe, sonSiddet: sonSiddet, yeniNot: function (o) { yeniNot(o); },
-      serit: serit, seritKonum: seritKonum, takvimAc: takvimAc
+      serit: serit, seritKonum: seritKonum, takvimAc: takvimAc, profilDugmesi: profilDugmesi, sekmeGec: sekmeGec
     });
   }
   /* ---------- 1.10: İlerleme ekranı (ilerleme.js) ---------- */
@@ -2316,6 +2390,7 @@
       ayar: ayar, ayarYaz: ayarYaz, islemEkle: islemEkle, bildir: bildir, ciz: function () { ciz(); }, hedef: hedef, istekAdresi: istekAdresi,
       pencereAc: pencereAc, pencereIcerik: pencereIcerik, pencereKapat: pencereKapat, gunKaydir: gunKaydir, agriKademe: agriKademe,
       tarihKutusu: tarihKutusu, tarihKutusuBagla: tarihKutusuBagla,
+      profilDugmesi: profilDugmesi, sekmeGec: sekmeGec, pencereSekmeGec: pencereSekmeGec,
       bugunGit: function (g) { gunDegistir(g); ekranSec('bugun'); }
     });
   }

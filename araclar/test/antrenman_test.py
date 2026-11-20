@@ -3,6 +3,7 @@
 """
 import asyncio, sys, os, json
 from playwright.async_api import async_playwright
+import os as _o; exec(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'yazitipi.py'), encoding='utf-8').read())
 PORT, CIKTI = sys.argv[1], sys.argv[2]; os.makedirs(CIKTI, exist_ok=True)
 sonuc = []
 def kontrol(ad, kosul, ayr=''):
@@ -12,6 +13,7 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
         c = await b.new_context(viewport={'width': 412, 'height': 915}, device_scale_factor=2, is_mobile=True, has_touch=True, locale='tr-TR', timezone_id='Europe/Istanbul', reduced_motion='reduce')
+        await yazi_tipi(c)
         pg = await c.new_page(); hata = []; pg.on('pageerror', lambda e: hata.append(str(e)))
         await pg.clock.set_fixed_time('2026-11-19T13:20:00+03:00')  # Perşembe
         await pg.goto(f'http://localhost:{PORT}/#k=x'); await pg.wait_for_selector('.ozet-kart'); await pg.wait_for_timeout(1300)

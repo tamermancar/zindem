@@ -1,6 +1,7 @@
 """1.8 Adım adım ağrı notu + yeni ev yemekleri testi (sahte tablo). Kullanım: python3 -I agri_test.py <port> <çıktı> [koyu]"""
 import asyncio, json, sys, os, urllib.request, urllib.parse
 from playwright.async_api import async_playwright
+import os as _o; exec(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'yazitipi.py'), encoding='utf-8').read())
 PORT, OUT = sys.argv[1], sys.argv[2]
 KOYU = len(sys.argv) > 3
 os.makedirs(OUT, exist_ok=True)
@@ -15,6 +16,7 @@ async def main():
         b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
         c = await b.new_context(viewport={'width': 390, 'height': 800}, device_scale_factor=2, is_mobile=True, has_touch=True, locale='tr-TR',
                                 timezone_id='Europe/Istanbul', reduced_motion='reduce', color_scheme='dark' if KOYU else 'light')
+        await yazi_tipi(c)
         pg = await c.new_page(); hata = []
         pg.on('pageerror', lambda e: hata.append(str(e)))
         await pg.clock.set_fixed_time('2026-11-19T13:20:00+03:00')

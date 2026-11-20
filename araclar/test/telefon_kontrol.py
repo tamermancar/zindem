@@ -9,6 +9,7 @@ Kullanım: python3 -I telefon_kontrol.py <port> <çıktı klasörü> [koyu]
 import urllib.request
 import asyncio, sys, os
 from playwright.async_api import async_playwright
+import os as _o; exec(open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), 'yazitipi.py'), encoding='utf-8').read())
 
 PORT, CIKTI = sys.argv[1], sys.argv[2]
 KOYU = len(sys.argv) > 3 and sys.argv[3] == 'koyu'
@@ -25,6 +26,14 @@ KURALLAR = r"""() => {
     s.split(/,(?![^(]*\))/).forEach(p => { if (/inset/.test(p)) return; const n = (p.replace(/rgba?\([^)]*\)|#[0-9a-f]+/gi, '').match(/-?[\d.]+px/g) || []).map(parseFloat);
       const [x = 0, y = 0, bl = 0, sp = 0] = n; m = Math.max(m, Math.max(Math.abs(x), Math.abs(y)) + bl * 0.6 + sp); }); return m; };
   const pen = document.getElementById('pencere'), penAcik = pen && !pen.hidden;
+  // (1.10.1) Alt menüdeki düğmeler menünün içinde kalmalı (uzun sekme adı seçiliyken son düğme taşıyordu)
+  const menu = document.querySelector('.alt-menu');
+  if (menu && !penAcik) { const mr = menu.getBoundingClientRect();
+    for (const b of menu.querySelectorAll('.sekme')) { const br = b.getBoundingClientRect();
+      if (br.right > mr.right - 2 || br.left < mr.left + 2) out.push(['❌', 'Menü taşıyor', ad(b) + ' alt menünün dışına çıkıyor']); } }
+  // (1.10.1) Başlıktaki düğme yazısı iki satıra düşmemeli (dar ekranda "Yeni tarif" kırılıyordu)
+  for (const b of document.querySelectorAll('.ekran-ust button')) { const r = b.getBoundingClientRect();
+    if (r.width && r.height > 52) out.push(['❌', 'Düğme yazısı kırılıyor', ad(b) + ' ' + Math.round(r.height) + 'px']); }
   const saydam = a => { const c = getComputedStyle(a); return c.backgroundImage === 'none' && /rgba\(.*,\s*0\)|transparent/.test(c.backgroundColor); };
   for (const e of document.querySelectorAll('body *')) {
     if (!gorunur(e) || e.closest('svg, .gizli-yazi')) continue;
@@ -73,6 +82,7 @@ async def bir_ekran(b, W, H):
     klasor = f'{CIKTI}/{W}'; os.makedirs(klasor, exist_ok=True)
     c = await b.new_context(viewport={'width': W, 'height': H}, device_scale_factor=2, is_mobile=True, has_touch=True,
                             locale='tr-TR', timezone_id='Europe/Istanbul', reduced_motion='reduce', color_scheme='dark' if KOYU else 'light')
+    await yazi_tipi(c)
     pg = await c.new_page(); sayfa_hata = []
     urllib.request.urlopen(f'http://localhost:{PORT}/_ant_sifirla').read()
     pg.on('pageerror', lambda e: sayfa_hata.append(str(e)))
@@ -219,6 +229,9 @@ async def bir_ekran(b, W, H):
         await pg.tap('[data-t=durum][data-d=ayakta]'); await pg.tap('#t-devam'); await durum('ant-tanisma-4')
         await pg.tap('[data-t=hassas][data-d="kol"]'); await durum('ant-tanisma-uzuv')
         await pg.tap('[data-u="kol"][data-ut=sol]'); await pg.tap('[data-u="kol"][data-ud=agri]'); await pg.tap('[data-t=hassas][data-d="diz"]')
+        await pg.tap('#t-devam'); await durum('ant-tanisma-5')
+        await odak_kayiyor_mu('ant-tanisma-5', '#t-yil')
+        await pg.tap('[data-t=deneyim][data-d=yeni]'); await pg.fill('#t-yil', '1981'); await durum('ant-tanisma-5-dolu')
         await pg.tap('#t-devam'); await bekle(500); await durum('ant-dinlenme')
         await pg.tap('[data-a-gun="2026-11-18"]'); await durum('ant-gun')
         for i in [0, 2, 3]: await pg.tap(f'.an-set:not(.ekle):not(.tamam) >> nth={i}'); await bekle(150)
@@ -264,6 +277,27 @@ async def bir_ekran(b, W, H):
         await pg.tap('[data-i-duzenle]'); await durum('il-duzenle'); await kapat()
         await pg.tap('[data-ekran=bugun]'); await bekle()
     await adim('ilerleme', ilerleme); await kapat()
+
+    async def surum1101():  # 1.10.1: profil her ekranda, profil düzenle, kendi besini düzenle, sekmelerin kendi kaydırma yeri
+        await pg.tap('[data-ekran=mutfak]'); await bekle()
+        await pg.tap('[data-m-sekme=besin]'); await bekle()
+        await pg.evaluate("window.scrollTo(0, 600)"); await bekle(200)
+        await pg.tap('[data-m-sekme=tarif]'); await bekle(300)
+        y = await pg.evaluate("window.scrollY")
+        if y > 5: yaz(W, 'mutfak-sekme', '❌', 'Sekme kaydırması', f'Tariflerim, Besinler\'in kaydırma yerinde açıldı ({y}px)')
+        await pg.tap('[data-m-sekme=besin]'); await bekle(300)
+        y2 = await pg.evaluate("window.scrollY")
+        if abs(y2 - 600) > 40 and await pg.evaluate("document.body.scrollHeight > innerHeight + 600"): yaz(W, 'mutfak-sekme', '❌', 'Sekme kaydırması', f'Besinler kendi kaydırma yerine dönmedi ({y2}px)')
+        await pg.evaluate("window.scrollTo(0,0)")
+        await pg.tap('.ekran-ust [data-profil]'); await durum('profil-menu-mutfak')
+        await pg.tap('#pm-profil'); await durum('profil-duzenle')
+        await odak_kayiyor_mu('profil-duzenle', '#p-yil')
+        await kapat()
+        await pg.tap('[data-lg="Benim eklediklerim"]'); await bekle(300)
+        if await pg.locator('[data-besin-duz]').count():
+            await pg.tap('[data-besin-duz] >> nth=0'); await durum('besin-duzenle'); await kapat()
+        await pg.tap('[data-ekran=bugun]'); await bekle()
+    await adim('1.10.1', surum1101); await kapat()
 
     for h in sayfa_hata: yaz(W, 'sayfa', '❌', 'Sayfa hatası (JS)', h[:160])
 
