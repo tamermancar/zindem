@@ -11,8 +11,8 @@ window.ZI = function (Z) {
   var GK = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
   var TURLER = [['hafta', 'Hafta'], ['ay', 'Ay'], ['3ay', '3 Ay'], ['yil', 'Yıl']];
   // Ölçüler: kilo ve bel her zaman; diğerleri kullanıcı eklerse (ihtiyaç olunca sorulur)
-  var OLCU = { kilo: ['Kilo', 'kg'], bel: ['Bel', 'cm'], boyun: ['Boyun', 'cm'], gogus: ['Göğüs', 'cm'], pazu: ['Pazu', 'cm'], kalca: ['Kalça', 'cm'], uyluk: ['Uyluk', 'cm'], baldir: ['Baldır', 'cm'] };
-  var EK_OLCU = ['boyun', 'gogus', 'pazu', 'kalca', 'uyluk', 'baldir'];
+  var OLCU = { kilo: ['Kilo', 'kg'], bel: ['Bel', 'cm'], boyun: ['Boyun', 'cm'], omuz: ['Omuz', 'cm'], gogus: ['Göğüs', 'cm'], pazu: ['Pazu', 'cm'], kalca: ['Kalça', 'cm'], uyluk: ['Uyluk', 'cm'], baldir: ['Baldır', 'cm'] };
+  var EK_OLCU = ['boyun', 'omuz', 'gogus', 'pazu', 'kalca', 'uyluk', 'baldir'];
   var KARTLAR = [['kilo', 'weight', 'Kilo ve ölçüler'], ['beslenme', 'flame', 'Kalori ve protein'], ['su', 'droplet', 'Su'], ['adim', 'footsteps', 'Adım'],
     ['uyku', 'moon', 'Uyku'], ['antrenman', 'barbell', 'Antrenman'], ['agri', 'bandage', 'Ağrı ve sağlık notları']];
   var ANT_D = { tamam: ['circle-check', 'Tamamlandı'], kisa: ['clock', 'Kısa yapıldı'], yarim: ['circle-half-2', 'Yarım kaldı'], kaydirildi: ['arrow-forward-up', 'Yarına kaydırıldı'],
@@ -214,6 +214,12 @@ window.ZI = function (Z) {
   }
   function deger2(v, b, alt) { return '<p class="il-deger"><b>' + v + '</b> <span>' + b + '</span>' + (alt ? '<small>' + alt + '</small>' : '') + '</p>'; }
   function dipnot(yazi) { return '<p class="il-dip">' + ik('target') + '<span>' + yazi + '</span></p>'; }
+  // Kartta iki renk ne demek: kalori sınırın altı / aştı, diğerleri hedefin altı / hedefte (hedef yoksa tek renk, açıklama yok)
+  function lejantMetrik(k, h) {
+    if (h == null) return '';
+    return k === 'kcal' ? '<span><i class="il-anahtar kcal"></i>Sınırın altında</span><span><i class="il-anahtar asti"></i>Sınırı aştı</span>'
+      : '<span><i class="il-anahtar ' + k + '"></i>Hedefin altında</span><span><i class="il-anahtar ' + k + ' tamam"></i>Hedefte</span>';
+  }
   function hedefYazi(o) { return o.hedefli ? dipnot('Hedefte <b>' + o.hedefte + ' / ' + o.hedefli + '</b> gün') : ''; }
 
   /* ---------- Kartlar ---------- */
@@ -246,8 +252,8 @@ window.ZI = function (Z) {
     var dl = dilimler(tur, ref), hk = Z.hedef('kalori', bugun()), hp = Z.hedef('protein', bugun());
     return '<section class="kart il-kart" aria-label="Kalori ve protein"><button class="il-kart-dokun" data-i-detay="beslenme" aria-label="Kalori ve protein ayrıntısı"></button>' + kartBas('flame', 'kalori', 'Kalori ve protein') +
       '<div class="il-iki"><div>' + deger2(f(k.ort), 'kcal', 'ortalama' + (hk != null ? ' · sınır ' + f(hk) : '')) + '</div><div>' + deger2(f(p.ort), 'g protein', 'ortalama' + (hp != null ? ' · hedef ' + f(hp) : '')) + '</div></div>' +
-      '<div class="il-etiket-satir"><span><i class="il-anahtar kcal"></i>Kalori</span></div>' + yer(cubuk(dl, 'kcal'), 112, 'Günlük kalori grafiği, ortalama ' + f(k.ort) + ' kilokalori') +
-      '<div class="il-etiket-satir"><span><i class="il-anahtar p"></i>Protein</span></div>' + yer(cubuk(dl, 'p'), 112, 'Günlük protein grafiği, ortalama ' + f(p.ort) + ' gram') +
+      '<div class="il-etiket-satir"><b>Kalori</b>' + lejantMetrik('kcal', hk) + '</div>' + yer(cubuk(dl, 'kcal'), 112, 'Günlük kalori grafiği, ortalama ' + f(k.ort) + ' kilokalori') +
+      '<div class="il-etiket-satir"><b>Protein</b>' + lejantMetrik('p', hp) + '</div>' + yer(cubuk(dl, 'p'), 112, 'Günlük protein grafiği, ortalama ' + f(p.ort) + ' gram') +
       '<div class="il-dipler">' + (k.hedefli ? dipnot('Kalori sınırında <b>' + k.hedefte + ' / ' + k.hedefli + '</b> gün') : '') + (p.hedefli ? dipnot('Protein hedefinde <b>' + p.hedefte + ' / ' + p.hedefli + '</b> gün') : '') + '</div></section>';
   }
   function tekKart(k, ikon, tur, baslik, dtur, ref) {
@@ -256,7 +262,7 @@ window.ZI = function (Z) {
     var h = Z.hedef(HEDEF_TUR[k], bugun());
     return '<section class="kart il-kart" aria-label="' + baslik + '"><button class="il-kart-dokun" data-i-detay="' + k + '" aria-label="' + baslik + ' ayrıntısı"></button>' + kartBas(ikon, tur, baslik) +
       deger2(k === 'su' ? f(o.ort / 1000, 1) : f(o.ort), k === 'su' ? 'L' : 'adım', 'günlük ortalama' + (h != null ? ' · hedef ' + (k === 'su' ? f(h / 1000, 1) + ' L' : f(h)) : '')) +
-      yer(cubuk(dilimler(dtur, ref), k), 104, baslik + ' grafiği') + '<div class="il-dipler">' + hedefYazi(o) + '</div></section>';
+      (h != null ? '<div class="il-etiket-satir">' + lejantMetrik(k, h) + '</div>' : '') + yer(cubuk(dilimler(dtur, ref), k), 104, baslik + ' grafiği') + '<div class="il-dipler">' + hedefYazi(o) + '</div></section>';
   }
   function uykuSay(tur, ref) {
     var say = { '7+': 0, '6-7': 0, '<6': 0 }, n = 0;

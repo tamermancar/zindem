@@ -100,7 +100,7 @@ var AYAR_BILGI = {
   ant_ekipman: ['antrenman', 'Ekipman (JSON liste)'], ant_hareket: ['antrenman', 'Hareket durumu: ayakta / destekli / oturarak / sandalye'],
   ant_hassas: ['antrenman', 'Dikkat edilecek bölgeler (JSON)'], ant_uzuv: ['antrenman', 'Uzuv durumu (JSON)'], ant_ozet_hafta: ['antrenman', 'Haftanın özeti en son hangi hafta kapatıldı'],
   boy: ['profil', 'Boy (cm) · vücut kitle indeksi için'],
-  olcu_ek: ['ilerleme', 'Takip edilen ek ölçüler (virgülle: boyun, gogus, pazu, kalca, uyluk, baldir)'],
+  olcu_ek: ['ilerleme', 'Takip edilen ek ölçüler (virgülle: boyun, omuz, gogus, pazu, kalca, uyluk, baldir)'],
   il_gizli: ['ilerleme', 'İlerleme\'de gizlenen kartlar (virgülle)'], il_ozet_ay: ['ilerleme', 'Aylık özet kartı en son hangi ay kapatıldı']
 };
 function ayarGrupDoldur_() {

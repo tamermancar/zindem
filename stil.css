@@ -1034,7 +1034,13 @@ html[data-tema="koyu"] .il-kalori { color: var(--ana-yazi); }
 .il-etiket-satir { display: flex; gap: 12px; margin-top: 10px; font-size: 12.5px; font-weight: 700; color: var(--soluk); }
 .il-etiket-satir span { display: flex; align-items: center; gap: 6px; }
 .il-anahtar { width: 10px; height: 10px; border-radius: 3px; }
-.il-anahtar.kcal { background: var(--ana); } .il-anahtar.p { background: var(--h-pro); }
+.il-etiket-satir b { color: var(--yazi); font-weight: 800; margin-right: 2px; }
+.il-etiket-satir { flex-wrap: wrap; row-gap: 2px; }
+.il-anahtar { flex: none; }
+.il-anahtar.kcal { background: var(--ana); } .il-anahtar.asti { background: var(--h-kal-as); }
+.il-anahtar.p { background: var(--h-pro); } .il-anahtar.p.tamam { background: var(--h-pro-tamam); }
+.il-anahtar.su { background: var(--su-acik); } .il-anahtar.su.tamam { background: var(--su); }
+.il-anahtar.adim { background: var(--adim-acik); } .il-anahtar.adim.tamam { background: var(--adim); }
 .il-dipler { display: grid; gap: 2px; margin-top: 8px; }
 .il-dipler:empty { display: none; }
 .il-dip { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13.5px; color: var(--soluk); min-height: 24px; }
