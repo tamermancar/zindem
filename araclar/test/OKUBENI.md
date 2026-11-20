@@ -18,7 +18,11 @@ Uygulama bu klasörü kullanmaz. Gizli bilgi yok; tablolar bellekte, sahte veriy
   6. Yazı kutusuna dokununca liste kayıyor ya da kutu klavyenin altında kalıyor (klavye: ekran %55'e iner)
   7. Açılır grupta başlık dokunulan yerden kaçıyor
   8. Sayfa (JS) hatası
+  9. (1.10.3) En alta kaydırınca son alan sabit alt çubuğun arkasında kalıyor
+  10. (1.10.3) Klavye açıkken alt menü görünüyor
 
   Çıktı: `rapor.txt`, her durumun görüntüsü, `kolaj-412.jpg` / `kolaj-360.jpg`. Hata varsa çıkış kodu 1.
   Sonra görüntüler **Evidence Collector** rolünde (agency-agents `testing/testing-evidence-collector.md`) gözle incelenir: kuralın yakalayamadığı görünüm hataları (hizasızlık, üst üste binen yazı, yanlış renk) için. Bu iki adım geçmeden Tamer'e ekran görüntüsü sunulmaz.
   Yeni bir hata türü bulunursa önce bu betiğe kural olarak eklenir, sonra düzeltilir.
+- `surum1103_test.py <port> <klasör>` (1.10.3, `ORNEK_ANT=1` ile): yarım porsiyon, aşağı çekip kapatma, + düğmesi, klavyede alt menü, fazladan set, kısa ad, kaldığın yerden devam, sw.js önbelleği, İlerleme iskeleti, açılış süresi.
+  ⚠ Testler saati sabitler (`clock.set_fixed_time`): Date.now() ve performance.now() akmaz. Süre ölçen kodda bunu hesaba kat (dokunma hızı için `e.timeStamp`).

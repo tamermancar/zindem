@@ -373,11 +373,15 @@ window.ZI = function (Z) {
     if (!I.veri) return false;
     return !I.veri.o.length && !Object.keys(I.veri.g).length && !Object.keys(I.veri.a).length && !I.veri.n.length && !Object.keys(S.gv || {}).some(function (g) { return gunDeger(g); });
   }
+  function iskelet() {
+    var kart = '<section class="kart isk-kart" aria-hidden="true"><span class="isk-cizgi kisa"></span><span class="isk-cizgi"></span><span class="isk-blok"></span></section>';
+    return '<div class="iskelet" role="status"><span class="gizli-yazi">İlerleme yükleniyor</span><div class="isk-sekme" aria-hidden="true"></div>' + kart + kart + kart + '</div>';
+  }
   function ciz(ana) {
     if (!I.veri) {
       ana.innerHTML = '<div class="m-ust"><header class="ekran-ust">' + Z.profilDugmesi() + '<h1>İlerleme</h1></header></div>' +
         (I.hata ? '<section class="kart"><b>Veriler alınamadı.</b><p class="il-bos-satir">' + (I.hata === 'internet' ? 'İnternet bağlantını kontrol et.' : esc(I.hata)) + '</p><button class="ana-dugme" id="il-tekrar">Tekrar dene</button></section>'
-          : '<p class="yukleniyor">Gidişatın hazırlanıyor…</p>');
+          : iskelet()); // 1.10.3: yazı yerine kartların yer tutucuları (çoğu uygulamadaki gibi)
       var t = $('#il-tekrar'); if (t) t.onclick = function () { yukle(true); Z.ciz(); };
       yukle(); return;
     }
@@ -767,5 +771,6 @@ window.ZI = function (Z) {
     return e.length ? f(e[e.length - 1].v, 1) + ' kg' + (hk != null ? ' · hedef ' + f(hk, hk % 1 ? 1 : 0) : '') : '';
   }
   function kiloAc() { if (I.veri) olcumDetay('kilo'); else { I.acilacak = 'kilo'; yukle(); } }
-  return { ciz: ciz, yukle: yukle, uygula: uygula, sifirla: function () { I.veri = null; }, kiloOzet: kiloOzet, kiloAc: kiloAc };
+  return { ciz: ciz, yukle: yukle, uygula: uygula, sifirla: function () { I.veri = null; }, kiloOzet: kiloOzet, kiloAc: kiloAc,
+    sekme: function (y) { if (/^(hafta|ay|3ay|yil)$/.test(y || '')) I.tur = y; return I.tur; } }; // 1.10.3: kaldığın yerden devam
 };

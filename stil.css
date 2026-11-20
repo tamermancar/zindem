@@ -75,6 +75,15 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .yukleniyor { text-align: center; color: var(--soluk); padding: 48px 0; }
+/* 1.10.3: yükleme iskeleti (İlerleme) */
+.iskelet .isk-sekme { height: 40px; border-radius: 20px; background: var(--yumusak); margin: 10px 0 14px; }
+.isk-kart { margin-bottom: 12px; }
+.isk-cizgi { display: block; height: 12px; width: 70%; border-radius: 6px; background: var(--yumusak); margin: 2px 0 10px; }
+.isk-cizgi.kisa { width: 40%; }
+.isk-blok { display: block; height: 96px; border-radius: 12px; background: var(--yumusak); }
+.iskelet > * { animation: iskelet 1.2s ease-in-out infinite alternate; }
+@keyframes iskelet { from { opacity: 1; } to { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .iskelet > * { animation: none; } }
 .gizli-yazi { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .ikon { width: 24px; height: 24px; flex: none; }
 .ikon.capraz { transform: rotate(-45deg); }
@@ -106,7 +115,8 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
   display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
 .kapat .ikon { width: 20px; height: 20px; stroke-width: 2.4; }
 /* Sabit başlık: kaydırınca başlık, X ve (varsa) arama + sekmeler üstte kalır */
-.pencere-bas { position: sticky; top: -8px; z-index: 6; background: var(--kart); margin: -8px -16px 0; padding: 8px 16px 2px; }
+.pencere-bas { position: sticky; top: -8px; z-index: 6; background: var(--kart); margin: -8px -16px 0; padding: 8px 16px 2px; touch-action: pan-x; } /* 1.10.3: aşağı çekince pencere kapanır */
+.pencere.cekiliyor { animation: none; transition: none; }
 .pencere-bas .arama { margin: 10px 0 2px; }
 .pencere-bas .grup-cipler { margin-top: 6px; }
 .pencere-bas .arama-ikon { top: 22px; }
@@ -128,6 +138,9 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .alt-sabit { position: sticky; bottom: 0; z-index: 2; margin-top: 12px; background: var(--yumusak); border-radius: 18px; padding: 10px 12px 10px; }
 .alt-sabit::before, .tarif-alt::before { content: ''; position: absolute; left: -16px; right: -16px; top: -28px; height: 28px; pointer-events: none;
   background: linear-gradient(transparent, var(--kart)); }
+/* 1.10.3: en alta kaydırınca son alan sabit çubuğun solgun geçişinin arkasında kalmasın (Kendi hareketin › Not) */
+#pencere :has(+ .alt-dugme) { margin-bottom: 20px; }
+#pencere :has(+ .alt-sabit), #pencere :has(+ .tarif-alt) { margin-bottom: 28px; }
 .alt-sabit .sepet-toplam { margin-top: 0; font-size: 14px; align-items: baseline; }
 .alt-sabit .sepet-toplam b { font-size: 15px; }
 .alt-sabit .ana-dugme { margin-top: 8px; min-height: 46px; }
@@ -163,6 +176,7 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .arama-sil::before { content: ''; position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--cizgi); }
 .arama-sil .ikon { position: relative; width: 16px; height: 16px; stroke-width: 2.6; }
 .form-alan { margin-top: 10px; }
+.form-alan .alan-not { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 6px; }
 .form-alan label, .form-alan .etiket-yazi, .takip .etiket-yazi { display: block; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
 .form-alan input[type=text], .form-alan input[type=number], .form-alan select, .form-alan textarea, .satir-form input, .sayi-kutu {
   min-height: 44px; border-radius: 12px; border: 1.5px solid var(--halka); background: var(--kart); color: var(--yazi); padding: 0 12px; font: inherit; font-size: 15px; }
@@ -786,6 +800,7 @@ html[data-tema="koyu"] .ana-dugme.tehlike { color: var(--zemin); }
 body.klavye .tarif-alt, body.klavye .alt-sabit, body.klavye .alt-dugme { position: static; }
 body.klavye .tarif-alt::before, body.klavye .alt-sabit::before, body.klavye .alt-dugme::before { display: none; }
 body.klavye .sepet-cubuk { display: none; }
+body.klavye .alt-menu, body.klavye .alt-perde { display: none; } /* 1.10.3: klavye açıkken alt menü klavyenin arkasında kalır (her ekranda) */
 @media (prefers-reduced-motion: reduce) {
   .pencere:not([hidden]), .perde, .pencere.kapaniyor, .perde.kapaniyor { animation: none; }
   .kaydir > .satir, .kaydir > .sepet-satir { transition: none; }
@@ -1219,7 +1234,7 @@ button.liste-satir .duz-ikon { position: absolute; right: 6px; top: 50%; transfo
 .profil-kilo b { font-size: 14.5px; font-weight: 700; color: var(--soluk); }
 .birimli small:empty { display: none; }
 /* Dar ekranda başlıktaki ekle düğmesi sadece simge olur (başlık kesilmesin) */
-@media (max-width: 380px) { .ekran-ust .ekle-dugme .dar-gizle { display: none; } .ekran-ust .ekle-dugme { width: 44px; padding: 0; justify-content: center; } }
+@media (max-width: 380px) { .ekran-ust .ekle-dugme .dar-gizle { display: none; } .ekran-ust .ekle-dugme { width: 44px; height: 44px; min-height: 44px; border-radius: 50%; padding: 0; justify-content: center; } } /* 1.10.3: tam yuvarlak (eskiden 44 × 40, elips) */
 
 /* ===== 1.10.2 Profil simgesi (Fluent Emoji, zeminsiz) ===== */
 .profil.simgeli { background: none; }

@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.10.2';
+var SUNUCU_SURUM = '1.10.3';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -19,7 +19,7 @@ var SAYFALAR = {
   'Ağrı Takibi': ['Not ID', 'Tarih', 'Şiddet', 'Cevap', 'Not'],
   // 1.9: Antrenman. Plan = haftanın günü (1 Pzt … 7 Paz) → antrenman ID (JSON). Hareketler = antrenmanın hareket listesi (JSON).
   'Programlar': ['ID', 'Ad', 'Etkin', 'Plan', 'Başlangıç', 'Güncelleme'],
-  'Antrenmanlar': ['ID', 'Program ID', 'Ad', 'Sıra', 'Hareketler'],
+  'Antrenmanlar': ['ID', 'Program ID', 'Ad', 'Sıra', 'Hareketler', 'Kısa ad'], // 1.10.3: Kısa ad = Programım'daki haftalık tabloda görünen ad (isteğe bağlı)
   'Antrenman Kayıtları': ['ID', 'Gün', 'Antrenman ID', 'Hareket ID', 'Ad', 'Set', 'Tekrar', 'Ağırlık', 'Kayıt zamanı'],
   // Durum: tamam · yarım · kaydırıldı · yapılmadı · plan (başka günden kaydırılan ya da elle seçilen antrenman). Kısa: 1 = kısa gün
   'Antrenman Günleri': ['Gün', 'Antrenman ID', 'Ad', 'Durum', 'Kısa', 'Yapılan', 'Hedef', 'Not', 'Kayıt zamanı'],
@@ -48,7 +48,19 @@ function semaGuncelle_() {
   });
   if (!pr.getProperty('GRUP_GOCU')) { grupGocu_(); pr.setProperty('GRUP_GOCU', '1'); }
   ayarGrupDoldur_(); // 1.7: Ayarlar › Grup ve Açıklama sütunları (boş olanlar doldurulur)
+  if (!pr.getProperty('BENIM_EKI')) { benimEkiSil_(); pr.setProperty('BENIM_EKI', '1'); }
   pr.setProperty('SEMA_SURUM', SUNUCU_SURUM);
+}
+
+/* ---------- 1.10.3: eski sürümde tarif adına yazılan " (benim)" eki bir kez silinir (Tarifler ve Öğün Kayıtları) ---------- */
+function benimEkiSil_() {
+  ['Tarifler', 'Öğün Kayıtları'].forEach(function (ad) {
+    var sh = sayfa_(ad), son = sh.getLastRow(), i = basliklar_(ad).indexOf('Ad') + 1;
+    if (son < 2 || i < 1) return;
+    var r = sh.getRange(2, i, son - 1, 1), d = r.getValues(), degisti = false;
+    d.forEach(function (x) { var y = String(x[0]).replace(/\s*\(benim\)\s*$/i, ''); if (y !== String(x[0])) { x[0] = y; degisti = true; } });
+    if (degisti) r.setValues(d);
+  });
 }
 
 /* ---------- 1.3: Besinlerim › Kategori sütunu yeni besin gruplarına çevrilir (bir kez) ---------- */
@@ -497,7 +509,7 @@ function islemYap_(is) {
       else satirEkle_('Programlar', { 'ID': pg.id, 'Ad': pg.ad, 'Etkin': pg.etkin ? 1 : 0, 'Plan': plan, 'Başlangıç': pg.baslangic || bugun_(), 'Güncelleme': zaman_() });
       satirlariSil_('Antrenmanlar', 'Program ID', pg.id);
       (v.antrenmanlar || []).forEach(function (a, i) {
-        satirEkle_('Antrenmanlar', { 'ID': a.id, 'Program ID': pg.id, 'Ad': a.ad, 'Sıra': i + 1, 'Hareketler': JSON.stringify(a.hareketler || []) });
+        satirEkle_('Antrenmanlar', { 'ID': a.id, 'Program ID': pg.id, 'Ad': a.ad, 'Sıra': i + 1, 'Hareketler': JSON.stringify(a.hareketler || []), 'Kısa ad': a.kad || '' });
       });
       return;
     case 'program_sil':

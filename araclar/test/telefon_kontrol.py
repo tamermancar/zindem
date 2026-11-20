@@ -28,7 +28,7 @@ KURALLAR = r"""() => {
   const pen = document.getElementById('pencere'), penAcik = pen && !pen.hidden;
   // (1.10.1) Alt menüdeki düğmeler menünün içinde kalmalı (uzun sekme adı seçiliyken son düğme taşıyordu)
   const menu = document.querySelector('.alt-menu');
-  if (menu && !penAcik) { const mr = menu.getBoundingClientRect();
+  if (menu && !penAcik && getComputedStyle(menu).display !== 'none') { const mr = menu.getBoundingClientRect();
     for (const b of menu.querySelectorAll('.sekme')) { const br = b.getBoundingClientRect();
       if (br.right > mr.right - 2 || br.left < mr.left + 2) out.push(['❌', 'Menü taşıyor', ad(b) + ' alt menünün dışına çıkıyor']); } }
   // (1.10.1) Başlıktaki düğme yazısı iki satıra düşmemeli (dar ekranda "Yeni tarif" kırılıyordu)
@@ -37,6 +37,14 @@ KURALLAR = r"""() => {
   // (1.10.2) Kırık resim olmamalı (yüklenemeyen simge)
   for (const im of document.querySelectorAll('img')) { const r = im.getBoundingClientRect();
     if (r.width && im.complete && !im.naturalWidth) out.push(['❌', 'Resim yüklenmedi', (im.getAttribute('src') || '').slice(0, 60)]); }
+  // (1.10.3) En alta kaydırınca son alan, sabit alt çubuğun (ve üstündeki solgun geçişin) arkasında kalmamalı
+  if (penAcik && pen.scrollTop >= pen.scrollHeight - pen.clientHeight - 2) for (const bar of pen.querySelectorAll('.alt-dugme, .alt-sabit, .tarif-alt')) {
+    const bc = getComputedStyle(bar); if (bc.position !== 'sticky' || bc.display === 'none') continue;
+    let onc = bar.previousElementSibling; while (onc && !onc.getBoundingClientRect().height) onc = onc.previousElementSibling; if (!onc) continue;
+    const once = getComputedStyle(bar, '::before'), ust = bar.getBoundingClientRect().top + (once.display !== 'none' && once.content !== 'none' ? parseFloat(once.top) || 0 : 0);
+    const ob = onc.getBoundingClientRect().bottom;
+    if (ob > ust + 1) out.push(['❌', 'Sabit çubuğun arkasında kalıyor', ad(onc) + ' altı ' + Math.round(ob) + ' > ' + Math.round(ust)]);
+  }
   const saydam = a => { const c = getComputedStyle(a); return c.backgroundImage === 'none' && /rgba\(.*,\s*0\)|transparent/.test(c.backgroundColor); };
   for (const e of document.querySelectorAll('body *')) {
     if (!gorunur(e) || e.closest('svg, .gizli-yazi')) continue;
@@ -139,6 +147,9 @@ async def bir_ekran(b, W, H):
         r = await pg.evaluate(f"(()=>{{const r=document.querySelector('{kutu}').getBoundingClientRect(); return [r.top, r.bottom];}})()")
         if zaten_gorunur and abs(sonra - once) > 2: yaz(W, ad, '❌', 'Dokununca liste kaydı', f'{kutu}: kaydırma {once} → {sonra}, üstteki satırlar kayboldu')
         if r[0] < 0 or r[1] > H * 0.55: yaz(W, ad, '❌', 'Yazı kutusu klavyenin altında', f'{kutu} {r}')
+        # (1.10.3) klavye açıkken alt menü görünmemeli (klavyenin arkasında kalır)
+        if await pg.evaluate("(()=>{const m=document.querySelector('.alt-menu'); if(!m) return false; const r=m.getBoundingClientRect(); return getComputedStyle(m).display!=='none' && r.height>0;})()"):
+            yaz(W, ad, '❌', 'Klavyede alt menü görünüyor', 'alt menü klavyenin üstüne çıktı')
         await durum(ad + '-klavye')
         await pg.evaluate("document.activeElement && document.activeElement.blur()")
         await pg.set_viewport_size({'width': W, 'height': H}); await bekle(300)
@@ -260,7 +271,7 @@ async def bir_ekran(b, W, H):
         await kaydir_sabit_mi('ant-hareketler', None, '.m-ust')
         await odak_kayiyor_mu('ant-hareketler', '#a-ara')
         await pg.tap('[data-a-filtre=bolge]'); await durum('ant-filtre'); await pg.tap('[data-f="bacak"]'); await durum('ant-filtre-bacak')
-        await pg.tap('[data-a-kendi]'); await durum('ant-kendi'); await kapat()
+        await pg.tap('[data-a-kendi]'); await durum('ant-kendi'); await kaydir_sabit_mi('ant-kendi', 'pencere', '#pencere-baslik'); await kapat()
         await pg.tap('[data-ekran=bugun]'); await bekle()
     await adim('antrenman', antrenman); await kapat()
 

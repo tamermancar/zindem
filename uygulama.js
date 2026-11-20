@@ -17,8 +17,8 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.10.2';
-  var SURUM = '1.10.2';
+  var SUNUCU_SURUM = '1.10.3';
+  var SURUM = '1.10.3';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -334,10 +334,10 @@
     S.bugun = gunBul(Date.now());
     if (gun) S.gun = gun;
     if (!S.gun || S.gun > S.bugun) S.gun = S.bugun;
-    var istenen = S.gun, bas = gunKaydir(S.bugun, -(ARALIK_GUN - 1)), basladi = Date.now();
+    var istenen = S.gun, bas = gunKaydir(S.bugun, -(ARALIK_GUN - 1)), basladi = Date.now(), basP = window.performance ? performance.now() : 0;
     if (istenen < bas) bas = istenen.slice(0, 8) + '01';
     return Promise.all([
-      fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }),
+      fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }).then(function (j) { if (S.olcum && S.olcum.sunucu == null) S.olcum.sunucu = performance.now() - basP; return j; }),
       S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=7').then(function (r) { return r.json(); })
     ]).then(function (sonuc) {
       var c = sonuc[0];
@@ -717,6 +717,7 @@
   });
   function acilisKapat() {
     var a = $('#acilis'); if (!a || a.classList.contains('kapaniyor')) return;
+    if (S.olcum && window.performance) S.olcum.toplam = performance.now();
     a.classList.add('kapaniyor'); cubukRengi();
     setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 400);
   }
@@ -736,14 +737,12 @@
     if (olcu === 'gram') return 'g';
     return String(olcu || '').replace(/^1\s+/, '').replace(/\s*\(.*\)\s*$/, '');
   }
-  /* 1.6.2 ölçü standardı: adet (zeytin, yumurta, çeri…) ve paket/kutu tam sayı; boy (domates, salatalık, elma…),
-     kaşık, bardak, kibrit kutusu, dilim, avuç, porsiyon yarım olur; gram 10 (yağlıda 5) */
+  /* 1.10.3 ölçü standardı: gram dışındaki her ölçü yarım artar (yarım galeta, yarım yumurta, yarım paket); gram 10 (yağlıda 5) */
   function miktarAdimi(besin, olcu) {
     if (olcu === 'gram') return besin && besin.kcal >= 400 ? 5 : 10;
-    return tamSayiOlcu(olcu) ? 1 : 0.5;
+    return 0.5;
   }
-  function tamSayiOlcu(olcu) { return /adet|paket|şişe|kutu \(/.test(String(olcu)); }
-  function olcuYuvarla(m, olcu) { return tamSayiOlcu(olcu) ? Math.max(1, Math.round(m)) : Math.max(0.5, Math.round(m * 2) / 2); }
+  function olcuYuvarla(m) { return Math.max(0.5, Math.round(m * 2) / 2); }
   // 1.6.3: ölçü değişince sayı korunur (3 küçük zeytin → 3 büyük zeytin); sadece gram ile ölçü arasında çevrilir
   function olcuDegisMiktar(b, eskiO, m, yeniO, hassas) {
     if (eskiO === 'gram' || yeniO === 'gram') {
@@ -996,7 +995,7 @@
   // 1.7: geri = { ad, fn }: başlığın solunda "‹ ad" (listeden/menüden açılan alt pencerelerde). baslik null: başlık satırı içerikte (profil menüsü)
   function pencereAc(baslik, icerik, bagla, kucuk, sabit, geri) {
     if (kapanisSaati) { clearTimeout(kapanisSaati); kapanisSaati = 0; }
-    if ($('#pencere').hidden) oncekiOdak = document.activeElement;
+    if ($('#pencere').hidden) { oncekiOdak = document.activeElement; if ($('#bildirim-dugme')) { $('#bildirim').hidden = true; clearTimeout(bildirimZaman); } } // 1.10.3: yeni pencerede "Geri al" balonu kapanır (pencerenin düğmesinin üstünde kalıp yanlışlıkla basılmasın)
     var p = $('#pencere');
     p.classList.remove('kapaniyor'); $('#perde').classList.remove('kapaniyor');
     p.classList.toggle('sabit', !kucuk);
@@ -1015,10 +1014,10 @@
     var p = $('#pencere'), y = p.scrollTop;
     $('#pencere-ic').innerHTML = icerik; if (bagla) bagla(p); p.scrollTop = konumuKoru ? y : 0;
   }
-  function pencereKapat() {
+  function pencereKapat(hemen) {
     var p = $('#pencere'), pr = $('#perde');
     if (p.hidden || kapanisSaati) return;
-    var azHareket = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var azHareket = hemen === true || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     p.classList.add('kapaniyor'); pr.classList.add('kapaniyor');
     document.body.style.overflow = '';
     kapanisSaati = setTimeout(function () {
@@ -1028,6 +1027,42 @@
     }, azHareket ? 0 : 190);
   }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#pencere').hidden) pencereKapat(); });
+  /* 1.10.3: Alttan açılan pencere başlık bölgesinden aşağı çekilerek kapanır (Ev Bütçesi'ndeki gibi:
+     100 px'den fazla ya da hızlıca çekilirse kapanır, azsa yerine döner). Yatay kaydırma (sekme çipleri) bozulmaz. */
+  (function asagiCekKur() {
+    var p = $('#pencere'), pr = $('#perde'), y0 = null, x0 = 0, dy = 0, t0 = 0, yon = '';
+    p.addEventListener('touchstart', function (e) {
+      var el = e.target;
+      if (e.touches.length !== 1 || !el.closest('.pencere-bas') || /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) { y0 = null; return; }
+      y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; t0 = e.timeStamp; yon = '';
+    }, { passive: true });
+    p.addEventListener('touchmove', function (e) {
+      if (y0 === null) return;
+      var my = e.touches[0].clientY - y0, mx = e.touches[0].clientX - x0;
+      if (!yon) { if (Math.abs(my) < 8 && Math.abs(mx) < 8) return; yon = my > 0 && Math.abs(my) > Math.abs(mx) ? 'asagi' : 'baska'; if (yon === 'asagi') p.classList.add('cekiliyor'); }
+      if (yon !== 'asagi') return;
+      dy = Math.max(0, my); p.style.transform = 'translateY(' + dy + 'px)'; pr.style.opacity = String(Math.max(0.2, 1 - dy / 400));
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+    function bitir(e) {
+      if (y0 === null) return; y0 = null;
+      if (yon !== 'asagi') return;
+      var hizli = dy > 40 && dy / Math.max(1, e.timeStamp - t0) > 0.6;
+      p.classList.remove('cekiliyor');
+      if (dy > 100 || hizli) {
+        p.style.transition = 'transform .18s ease-in'; p.style.transform = 'translateY(100%)'; pr.style.transition = 'opacity .18s'; pr.style.opacity = '0';
+        setTimeout(function () { pencereKapat(true); p.style.transition = p.style.transform = pr.style.transition = pr.style.opacity = ''; }, 180);
+      } else {
+        p.style.transition = 'transform .18s ease-out'; p.style.transform = ''; pr.style.opacity = '';
+        setTimeout(function () { p.style.transition = ''; }, 200);
+      }
+      sonCekme = performance.now();
+    }
+    p.addEventListener('touchend', bitir); p.addEventListener('touchcancel', bitir);
+    // Çekme bitince parmağın altındaki düğme (X, Geri) tıklanmış sayılmasın
+    var sonCekme = 0;
+    p.addEventListener('click', function (e) { if (performance.now() - sonCekme < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
+  })();
 
   /* ---------- ＋ Ekle ve sepet ---------- */
   var penOgun = '';
@@ -1283,7 +1318,8 @@
      seçili kutu ekranın ortasına kaydırılır (arama kutusu üste, sonuçlar altında görünsün diye) */
   (function klavyeKur() {
     var zaman = 0;
-    function yaziKutusu(el) { return el && el.closest && el.closest('#pencere') && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search|number|email|tel)$/.test(el.type))); }
+    // 1.10.3: ana ekranlardaki arama kutuları da sayılır (klavye açıkken alt menü gizlenir)
+    function yaziKutusu(el) { return el && el.closest && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search|number|email|tel)$/.test(el.type))); }
     document.addEventListener('focusin', function (e) {
       if (!yaziKutusu(e.target)) return;
       // 1.6.3b: miktar/sayı kutusunda içerik seçili gelir; "2" iken 3'e basınca doğrudan "3" olur
@@ -1291,7 +1327,7 @@
       if (hedef.classList.contains('tm-miktar') || hedef.type === 'number' || hedef.inputMode === 'decimal' || hedef.inputMode === 'numeric') setTimeout(function () { try { hedef.select(); } catch (x) { /* yok */ } }, 0);
       clearTimeout(zaman); document.body.classList.add('klavye');
       var el = e.target;
-      if (el.closest('.pencere-bas')) return; // 1.8.1: sabit başlıktaki arama zaten görünür; kaydırma listeyi kaçırıyordu
+      if (el.closest('.pencere-bas') || el.closest('.m-ust')) return; // 1.8.1: sabit başlıktaki arama zaten görünür; kaydırma listeyi kaçırıyordu
       setTimeout(function () {
         if (document.activeElement !== el || !el.scrollIntoView) return;
         // 1.10: kutu klavyeyle birlikte de görünüyorsa liste yerinden oynamaz
@@ -1304,6 +1340,18 @@
       if (!yaziKutusu(e.target)) return;
       zaman = setTimeout(function () { if (!yaziKutusu(document.activeElement)) document.body.classList.remove('klavye'); }, 120);
     });
+    // 1.10.3: Android'de geri tuşu klavyeyi kapatır ama kutu odakta kalır; ekran eski boyuna dönünce alt menü geri gelir
+    var vv = window.visualViewport;
+    function boy() { return vv ? vv.height * (vv.scale || 1) : window.innerHeight; }
+    var enBuyuk = boy(), odakZamani = 0;
+    document.addEventListener('focusin', function () { odakZamani = performance.now(); });
+    (vv || window).addEventListener('resize', function () {
+      var h = boy(); if (h > enBuyuk) enBuyuk = h;
+      var acik = h < enBuyuk - 150;
+      if (acik && yaziKutusu(document.activeElement)) document.body.classList.add('klavye');
+      else if (!acik && performance.now() - odakZamani > 600) document.body.classList.remove('klavye');
+    });
+    window.addEventListener('orientationchange', function () { setTimeout(function () { enBuyuk = boy(); }, 400); });
   })();
 
   /* ---------- 1.6.2: Kaydı düzenle (Bugün'de bir kayda dokununca) ----------
@@ -1830,6 +1878,9 @@
   function baslat() {
     S.anahtar = anahtarOku();
     if (!S.anahtar) { ciz(); return; }
+    // 1.10.3: açılış ölçümü (sadece bellekte; Ayarlar › Veri ve hesap'ta görünür): dosyalar = sayfanın açılmasından buraya kadar
+    if (!S.olcum && window.performance) S.olcum = { dosya: performance.now(), sunucu: null, toplam: null, telefondan: !!(navigator.serviceWorker && navigator.serviceWorker.controller) };
+    konumYukle();
     ciz();
     yukle().then(function () { ciz(); gonder(); });
   }
@@ -1841,14 +1892,38 @@
   function ekranSec(e) {
     if (e === S.ekran) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     S.ekran = e; titret();
+    menuIsaretle(e);
+    ciz(); window.scrollTo(0, 0);
+  }
+  function menuIsaretle(e) {
     document.querySelectorAll('.alt-menu [data-ekran]').forEach(function (b) {
       var on = b.getAttribute('data-ekran') === e, ad = b.getAttribute('data-ikon');
       b.classList.toggle('acik', on);
       if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
       b.querySelector('use').setAttribute('href', '#t-' + (on && ad !== 'chef-hat' ? ad + '-dolu' : ad));
     });
-    ciz(); window.scrollTo(0, 0);
   }
+  /* 1.10.3: Kaldığın yerden devam. Telefon uygulamayı kapatıp yeniden açtığında son ekran ve sekme 30 dakika hatırlanır.
+     Sadece ekranın adı tutulur (kişisel veri değil); tarayıcı verisi silinirse Bugün'den açılır. */
+  var KONUM = 'zindem-konum';
+  function konumKaydet() {
+    try {
+      var s2 = S.ekran === 'mutfak' ? M.sekme : S.ekran === 'antrenman' && ANT ? ANT.sekme() : S.ekran === 'ilerleme' && ILR ? ILR.sekme() : '';
+      localStorage.setItem(KONUM, JSON.stringify({ e: S.ekran, s: s2, t: Date.now() }));
+    } catch (x) { /* depolama kapalı olabilir */ }
+  }
+  function konumYukle() {
+    try {
+      var k = JSON.parse(localStorage.getItem(KONUM) || 'null');
+      if (!k || Date.now() - k.t > 30 * 60000 || !/^(mutfak|antrenman|ilerleme)$/.test(k.e)) return;
+      S.ekran = k.e;
+      if (k.e === 'mutfak' && /^(tarif|besin)$/.test(k.s)) M.sekme = k.s;
+      if (k.e === 'antrenman' && ANT) ANT.sekme(k.s);
+      if (k.e === 'ilerleme' && ILR) ILR.sekme(k.s);
+      menuIsaretle(k.e);
+    } catch (x) { /* bozuk kayıt: Bugün'den açılır */ }
+  }
+  window.addEventListener('pagehide', konumKaydet);
   /* ---------- 1.7: Tema ve telefon çubuklarının rengi ---------- */
   var koyuSorgu = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function temaUygula() {
@@ -2330,6 +2405,12 @@
     ['olculer', 'Kilo ve bel ölçüleri', 'ölçüm'], ['agri', 'Ağrı notları', 'not'], ['hedefler', 'Hedefler', 'hedef'],
     ['antrenman', 'Antrenman kayıtları', 'gün'], ['programlar', 'Antrenman programları ve hareketlerim', 'program'], ['ayarlar', 'Uygulama ayarları (varsayılana döner)', 'ayar']];
   var yedekleniyor = false;
+  function acilisHtml() {
+    var o = S.olcum; if (!o || o.toplam == null) return '';
+    var sn = function (ms) { return bicim(ms / 1000, 1) + ' sn'; };
+    return '<div class="bolum-baslik">Son açılış</div><div class="menu-satir pasif"><span class="m-ikon" aria-hidden="true">' + ik('clock') + '</span><span class="bilgi"><b>Toplam ' + sn(o.toplam) + '</b>' +
+      '<small>Dosyalar ' + sn(o.dosya) + (o.telefondan ? ' (telefondan)' : '') + ' · sunucu ' + (o.sunucu == null ? '—' : sn(o.sunucu)) + '</small></span></div>';
+  }
   function veriAc() {
     var secili = {};
     function sayiYaz(g) { return S.sayilar ? bicim(S.sayilar[g] || 0) + ' ' + SIFIR_LISTE.filter(function (x) { return x[0] === g; })[0][2] : '…'; }
@@ -2347,6 +2428,7 @@
         }).join('') +
         '<button class="ikinci-dugme tehlike" id="v-secilen">' + ik('trash') + ' Seçilenleri sıfırla</button>' +
         '<button class="metin-dugme tehlike orta" id="v-tumu">Tümünü sıfırla</button>' +
+        acilisHtml() +
         '<div class="bolum-baslik">Hesap</div><div class="menu-satir pasif"><span class="m-ikon" aria-hidden="true">' + ik('user-x') + '</span><span class="bilgi"><b>Hesabı sil</b><small>Mağaza sürümünde gelecek</small></span></div>';
     }
     function bagla() {
@@ -2426,6 +2508,7 @@
   window.addEventListener('online', gonder);
   setInterval(gonder, 30000);
   document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') { konumKaydet(); return; }
     if (document.visibilityState !== 'visible' || !S.anahtar) return;
     // Gün değiştiyse ya da 5 dakikadan uzun süre arka plandaysa yeniden yükle
     if (gunBul(Date.now()) !== S.bugun || Date.now() - S.sonYukleme > 300000) {
@@ -2433,5 +2516,7 @@
       yukle().then(function () { if ($('#pencere').hidden) { var y = window.scrollY; ciz(); window.scrollTo(0, y); } gonder(); });
     } else gonder();
   });
+  // 1.10.3: uygulamanın kendi dosyaları telefonda saklanır (sw.js); veriler saklanmaz
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(function () { /* olmazsa internetten açılır */ });
   baslat();
 })();
