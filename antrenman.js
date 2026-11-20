@@ -45,9 +45,9 @@ window.ZA = function (Z) {
       return { id: String(h['ID']), ad: h['Ad'], tur: h['Tür'] || 'tekrar', bolge: h['Bölge'] || '', ekipman: liste(h['Ekipman']), poz: h['Pozisyon'] || '',
         zorlar: liste(h['Zorlar']), uzuv: String(h['Uzuv'] || '').split(' ').filter(Boolean), benim: true, kaynak: 'Benim eklediğim', metin: { not: h['Not'] || '' } };
     });
-    A.gunler = {}; (c.gunler || []).forEach(function (g) { A.gunler[String(g['Gün'])] = g; });
+    A.gunler = {}; (c.gunler || []).forEach(function (g) { g['Gün'] = String(g['Gün']).slice(0, 10); A.gunler[g['Gün']] = g; });
     A.kayitlar = (c.kayitlar || []).map(function (k) {
-      return { id: String(k['ID']), gun: String(k['Gün']), antId: String(k['Antrenman ID']), hid: String(k['Hareket ID']), ad: k['Ad'], set: +k['Set'] || 1, tekrar: sayi(k['Tekrar']), agirlik: k['Ağırlık'] };
+      return { id: String(k['ID']), gun: String(k['Gün']).slice(0, 10), antId: String(k['Antrenman ID']), hid: String(k['Hareket ID']), ad: k['Ad'], set: +k['Set'] || 1, tekrar: sayi(k['Tekrar']), agirlik: k['Ağırlık'] };
     });
     if (!A.gun) A.gun = S.bugun;
   }

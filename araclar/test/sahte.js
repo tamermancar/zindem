@@ -23,7 +23,7 @@ const props = {};
 const ctx = {
   SpreadsheetApp: { getActive: () => ss },
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, x) => { props[k] = x; } }) },
-  Utilities: { formatDate: (d, tz, f) => { const p = n => String(n).padStart(2, '0'); const s = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); return f.includes('HH') ? s + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) : s; } }
+  Utilities: { formatDate: (d, tz, f) => { const p = n => String(n).padStart(2, '0'); const s = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); const h = p(d.getHours()) + ':' + p(d.getMinutes()); return f === 'HH:mm' ? h : f.includes('HH') ? s + ' ' + h : s; } }
 };
 const yedekTarih = [];
 ctx.yedekle = () => { yedekTarih.push(new Date()); };

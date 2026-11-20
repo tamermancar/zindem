@@ -160,8 +160,9 @@ function basliklar_(ad) {
 }
 function hucre_(v) {
   if (v instanceof Date) {
+    // 1.9.1: saat, betiğin değil tablonun saat dilimine göre okunur (elle yapıştırılan tarihler "… 00:00" olmasın)
     var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
-    var saatli = v.getHours() || v.getMinutes();
+    var saatli = Utilities.formatDate(v, tz, 'HH:mm') !== '00:00';
     return Utilities.formatDate(v, tz, saatli ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd');
   }
   return v;
