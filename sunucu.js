@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.7.1';
+var SUNUCU_SURUM = '1.9.0';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -16,9 +16,16 @@ var SAYFALAR = {
   'Günlük': ['Gün', 'Su (ml)', 'Adım', 'Uyku'],
   'Ölçüler': ['Tarih', 'Tür', 'Değer', 'Birim', 'Not'],
   'Ağrı Notları': ['ID', 'Açılış', 'Tür', 'Bölge', 'Taraf', 'Şiddet', 'Hareket', 'Not', 'Durum', 'Kapanış'],
-  'Ağrı Takibi': ['Not ID', 'Tarih', 'Şiddet', 'Cevap', 'Not']
+  'Ağrı Takibi': ['Not ID', 'Tarih', 'Şiddet', 'Cevap', 'Not'],
+  // 1.9: Antrenman. Plan = haftanın günü (1 Pzt … 7 Paz) → antrenman ID (JSON). Hareketler = antrenmanın hareket listesi (JSON).
+  'Programlar': ['ID', 'Ad', 'Etkin', 'Plan', 'Başlangıç', 'Güncelleme'],
+  'Antrenmanlar': ['ID', 'Program ID', 'Ad', 'Sıra', 'Hareketler'],
+  'Antrenman Kayıtları': ['ID', 'Gün', 'Antrenman ID', 'Hareket ID', 'Ad', 'Set', 'Tekrar', 'Ağırlık', 'Kayıt zamanı'],
+  // Durum: tamam · yarım · kaydırıldı · yapılmadı · plan (başka günden kaydırılan ya da elle seçilen antrenman). Kısa: 1 = kısa gün
+  'Antrenman Günleri': ['Gün', 'Antrenman ID', 'Ad', 'Durum', 'Kısa', 'Yapılan', 'Hedef', 'Not', 'Kayıt zamanı'],
+  'Hareketlerim': ['ID', 'Ad', 'Tür', 'Bölge', 'Ekipman', 'Pozisyon', 'Zorlar', 'Uzuv', 'Not']
 };
-var METIN_SUTUNLAR = ['ID', 'Gün', 'Tarih', 'Başlangıç', 'Açılış', 'Kapanış', 'Saat', 'Kayıt zamanı', 'Not ID', 'Besin ID', 'Katalog ID', 'Uyku', 'Tarif ID', 'Güncelleme', 'Malzemeler'];
+var METIN_SUTUNLAR = ['Program ID', 'Antrenman ID', 'Hareket ID', 'Plan', 'Hareketler', 'ID', 'Gün', 'Tarih', 'Başlangıç', 'Açılış', 'Kapanış', 'Saat', 'Kayıt zamanı', 'Not ID', 'Besin ID', 'Katalog ID', 'Uyku', 'Tarif ID', 'Güncelleme', 'Malzemeler'];
 
 /* ---------- Tablo yapısı: eksik sayfa ve sütunları tamamlar (her sürümde bir kez) ---------- */
 function semaGuncelle_() {
@@ -88,7 +95,10 @@ var AYAR_BILGI = {
   kahvalti_acik: ['ogunler', 'Kahvaltı açık mı (evet/hayır)'], ogle_acik: ['ogunler', 'Öğle açık mı'], aksam_acik: ['ogunler', 'Akşam açık mı'], cay_acik: ['ogunler', 'Çay saati açık mı'],
   hizli_ekle_ml: ['su', 'Su hızlı ekleme miktarları (ml, virgülle; ilki 1 bardak)'], duzeltme_ml: ['su', 'Su düzeltme adımı (ml)'],
   agri_dikkat: ['agri', 'Bu şiddetten itibaren: dikkat'], agri_ara: ['agri', 'Bu şiddetten itibaren: bölgeye ara'], agri_doktor: ['agri', 'Bu şiddetten itibaren: doktora danış'],
-  tema: ['gorunum', 'Tema: acik / koyu / telefon'], ipucu_sil: ['ipucu', 'Sola çekip sil ipucu gösterildi']
+  tema: ['gorunum', 'Tema: acik / koyu / telefon'], ipucu_sil: ['ipucu', 'Sola çekip sil ipucu gösterildi'],
+  ant_tanisma: ['antrenman', 'Antrenman tanışma soruları cevaplandı'], ant_yer: ['antrenman', 'Nerede: ev / salon / ikisi'],
+  ant_ekipman: ['antrenman', 'Ekipman (JSON liste)'], ant_hareket: ['antrenman', 'Hareket durumu: ayakta / destekli / oturarak / sandalye'],
+  ant_hassas: ['antrenman', 'Dikkat edilecek bölgeler (JSON)'], ant_uzuv: ['antrenman', 'Uzuv durumu (JSON)'], ant_ozet_hafta: ['antrenman', 'Haftanın özeti en son hangi hafta kapatıldı']
 };
 function ayarGrupDoldur_() {
   var sh = sayfa_('Ayarlar'); if (!sh || sh.getLastRow() < 2) return;
@@ -105,7 +115,8 @@ function ayarGrupDoldur_() {
 /* Sıfırlama grupları → sayfalar */
 var SIFIR_GRUP = {
   besinlerim: ['Besinlerim'], tarifler: ['Tarifler', 'Tarif Malzemeleri'], kayitlar: ['Öğün Kayıtları', 'Günlük'],
-  olculer: ['Ölçüler'], agri: ['Ağrı Notları', 'Ağrı Takibi'], hedefler: ['Hedefler']
+  olculer: ['Ölçüler'], agri: ['Ağrı Notları', 'Ağrı Takibi'], hedefler: ['Hedefler'],
+  antrenman: ['Antrenman Günleri', 'Antrenman Kayıtları'], programlar: ['Programlar', 'Antrenmanlar', 'Hareketlerim']
 };
 function satirSayisi_(ad) { var sh = sayfa_(ad); return sh ? Math.max(0, sh.getLastRow() - 1) : 0; }
 function ayarSatirlari_(profil) { // Ayarlar sayfasında satır numaraları: profil = sadece ad satırı, değilse ad dışındakiler
@@ -265,9 +276,26 @@ function sunucuOku(p) {
     sikYenenler: sayim,
     gunler: Object.keys(gunSet).sort(),
     oncekiOgun: oncekiOgun_(ogunler, gun),
-    bas: bas, bitis: bitis, gunVeri: gunVeri, oncekiBas: oncekiBas
+    bas: bas, bitis: bitis, gunVeri: gunVeri, oncekiBas: oncekiBas,
+    antrenman: antrenmanOku_(bitis || gun)
   };
 }
+/* 1.9: Programlar ve son 120 günün antrenman günleri + kayıtları */
+function antrenmanOku_(gun) {
+  var sinir = gunEkle_(gun || bugun_(), -120);
+  return {
+    programlar: oku_('Programlar'), antrenmanlar: oku_('Antrenmanlar'), hareketlerim: oku_('Hareketlerim'),
+    gunler: oku_('Antrenman Günleri').filter(function (x) { return String(x['Gün']) >= sinir; }),
+    kayitlar: oku_('Antrenman Kayıtları').filter(function (x) { return String(x['Gün']) >= sinir; })
+  };
+}
+function satirlariSil_(ad, sutun, deger) {
+  var sh = sayfa_(ad); if (!sh || sh.getLastRow() < 2) return;
+  var col = basliklar_(ad).indexOf(sutun) + 1;
+  var v = sh.getRange(2, col, sh.getLastRow() - 1, 1).getValues();
+  for (var i = v.length - 1; i >= 0; i--) if (String(hucre_(v[i][0])) === String(deger)) sh.deleteRow(i + 2);
+}
+function zaman_() { return Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm'); }
 /* Her öğün için, verilen günden önceki son kayıtlı gün ("Dünkü kahvaltıyı ekle") */
 function tarifleriOku_() {
   var malz = {};
@@ -406,6 +434,51 @@ function islemYap_(is) {
         }
         (SIFIR_GRUP[g] || []).forEach(function (ad) { var sh = sayfa_(ad); if (sh && sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1); });
       });
+      return;
+    /* ---------- 1.9: Antrenman ---------- */
+    case 'program_kaydet': // program + antrenmanları birlikte; antrenman satırları silinip yeniden yazılır
+      var pg = v.program || {}, rp = satirBul_('Programlar', 'ID', pg.id), plan = JSON.stringify(pg.plan || {});
+      if (pg.etkin) { // tek etkin program
+        var shp = sayfa_('Programlar'), ie = basliklar_('Programlar').indexOf('Etkin') + 1;
+        if (shp.getLastRow() > 1) shp.getRange(2, ie, shp.getLastRow() - 1, 1).setValue(0);
+      }
+      if (rp) { hucreYaz_('Programlar', rp, 'Ad', pg.ad); hucreYaz_('Programlar', rp, 'Plan', plan); hucreYaz_('Programlar', rp, 'Etkin', pg.etkin ? 1 : 0); hucreYaz_('Programlar', rp, 'Güncelleme', zaman_()); }
+      else satirEkle_('Programlar', { 'ID': pg.id, 'Ad': pg.ad, 'Etkin': pg.etkin ? 1 : 0, 'Plan': plan, 'Başlangıç': pg.baslangic || bugun_(), 'Güncelleme': zaman_() });
+      satirlariSil_('Antrenmanlar', 'Program ID', pg.id);
+      (v.antrenmanlar || []).forEach(function (a, i) {
+        satirEkle_('Antrenmanlar', { 'ID': a.id, 'Program ID': pg.id, 'Ad': a.ad, 'Sıra': i + 1, 'Hareketler': JSON.stringify(a.hareketler || []) });
+      });
+      return;
+    case 'program_sil':
+      var rps = satirBul_('Programlar', 'ID', v.id);
+      if (rps) sayfa_('Programlar').deleteRow(rps);
+      satirlariSil_('Antrenmanlar', 'Program ID', v.id);
+      return;
+    case 'set_kaydet': // varsa tekrar/ağırlık değişir
+      var rs2 = satirBul_('Antrenman Kayıtları', 'ID', v.id);
+      if (rs2) { hucreYaz_('Antrenman Kayıtları', rs2, 'Tekrar', v.tekrar); hucreYaz_('Antrenman Kayıtları', rs2, 'Ağırlık', v.agirlik || ''); return; }
+      satirEkle_('Antrenman Kayıtları', { 'ID': v.id, 'Gün': v.gun, 'Antrenman ID': v.antId, 'Hareket ID': v.hareketId, 'Ad': v.ad,
+        'Set': v.set, 'Tekrar': v.tekrar, 'Ağırlık': v.agirlik || '', 'Kayıt zamanı': zaman_() });
+      return;
+    case 'set_sil':
+      var rss = satirBul_('Antrenman Kayıtları', 'ID', v.id);
+      if (rss) sayfa_('Antrenman Kayıtları').deleteRow(rss);
+      return;
+    case 'ant_gun': // günde tek satır: varsa güncellenir
+      var rg2 = satirBul_('Antrenman Günleri', 'Gün', v.gun), o2 = { 'Gün': v.gun, 'Antrenman ID': v.antId || '', 'Ad': v.ad || '', 'Durum': v.durum || '',
+        'Kısa': v.kisa ? 1 : 0, 'Yapılan': v.yapilan || 0, 'Hedef': v.hedef || 0, 'Not': v.not || '', 'Kayıt zamanı': zaman_() };
+      if (rg2) Object.keys(o2).forEach(function (k) { hucreYaz_('Antrenman Günleri', rg2, k, o2[k]); });
+      else satirEkle_('Antrenman Günleri', o2);
+      return;
+    case 'ant_gun_sil':
+      var rgs = satirBul_('Antrenman Günleri', 'Gün', v.gun);
+      if (rgs) sayfa_('Antrenman Günleri').deleteRow(rgs);
+      return;
+    case 'hareket_ekle': // Hareketlerim: varsa güncellenir
+      var rh2 = satirBul_('Hareketlerim', 'ID', v.id), o3 = { 'ID': v.id, 'Ad': v.ad, 'Tür': v.tur, 'Bölge': v.bolge, 'Ekipman': (v.ekipman || []).join(', '),
+        'Pozisyon': v.poz || '', 'Zorlar': (v.zorlar || []).join(', '), 'Uzuv': (v.uzuv || []).join(' '), 'Not': v.not || '' };
+      if (rh2) Object.keys(o3).forEach(function (k) { hucreYaz_('Hareketlerim', rh2, k, o3[k]); });
+      else satirEkle_('Hareketlerim', o3);
       return;
     default:
       throw new Error('bilinmeyen işlem: ' + is.tur);

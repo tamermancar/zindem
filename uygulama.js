@@ -17,8 +17,8 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.7.1';
-  var SURUM = '1.8.1';
+  var SUNUCU_SURUM = '1.9.0';
+  var SURUM = '1.9';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -346,6 +346,7 @@
       S.ayar = {}; (c.ayarlar || []).forEach(function (a) { S.ayar[a['Anahtar']] = a['Değer']; });
       S.hedefler = c.hedefler || []; S.besinlerim = c.besinlerim || []; S.tarifler = c.tarifler || [];
       S.agri = c.agri || []; S.son = c.sonYenenler || []; S.sik = c.sikYenenler || {};
+      if (ANT) ANT.yukle(c.antrenman);
       S.gunler = {}; (c.gunler || []).forEach(function (g) { S.gunler[g] = 1; });
       S.gv = {}; S.aralikBas = ''; S.oncekiBas = {}; S.oncekiSunucu = {};
       gunVerisiYaz(c, istenen);
@@ -379,6 +380,7 @@
         if (k) { k['Miktar'] = v.miktar; k['Gram'] = v.gram; k['kcal'] = v.kcal; k['Protein'] = v.p; if (v.malzemeler !== undefined) k['Malzemeler'] = v.malzemeler; if (v.besinId) { k['Besin ID'] = v.besinId; k['Ad'] = v.ad; } if (v.olcu) k['Ölçü'] = v.olcu; if (v.ogun) k['Öğün'] = v.ogun; }
       }
       if (is.tur === 'tarif_kaydet') tarifYerel(v);
+      if (ANT) ANT.uygula(is);
       if (is.tur === 'ayar_yaz') S.ayar[v.anahtar] = v.deger;
       if (is.tur === 'hedef_ekle') hedefYerel(v);
       if (is.tur === 'hedef_sil') S.hedefler = S.hedefler.filter(function (h) { return !(String(h['Başlangıç']) === v.baslangic && h['Tür'] === v.tur); });
@@ -493,20 +495,22 @@
   var SERIT_GUN = 35, AY_KISA = ['OCA', 'ŞUB', 'MAR', 'NİS', 'MAY', 'HAZ', 'TEM', 'AĞU', 'EYL', 'EKİ', 'KAS', 'ARA'];
   var GUN_KISA = ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct'];
   // Kayan tarih şeridi: başta takvim, sonra son 35 gün; en sağda bugün. Ayın 1'inde gün adı yerine ay adı ve solunda ayırıcı.
-  function serit() {
-    var h = '<div class="serit" id="serit" role="group" aria-label="Gün seç"><button class="sg takvim-sg" data-takvim aria-label="Takvimi aç">' + ik('calendar') + '</button>';
+  // 1.9: Antrenman ekranı da aynı şeridi kullanır: o = { id, secili, kayitli(g), veri, takvim }
+  function serit(o) {
+    o = o || { id: 'serit', secili: S.gun, kayitli: function (g) { return !!S.gunler[g]; }, veri: 'data-gun-sec', takvim: 'data-takvim' };
+    var h = '<div class="serit" id="' + o.id + '" role="group" aria-label="Gün seç"><button class="sg takvim-sg" ' + o.takvim + ' aria-label="Takvimi aç">' + ik('calendar') + '</button>';
     for (var i = SERIT_GUN - 1; i >= 0; i--) {
-      var g = gunKaydir(S.bugun, -i), p = g.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
-      var ayBasi = d.getDate() === 1, c = 'sg' + (g === S.bugun ? ' bugun' : '') + (g === S.gun ? ' secili' : '') + (S.gunler[g] ? ' kayitli' : '') + (ayBasi ? ' ay-basi' : '');
+      var g = gunKaydir(S.bugun, -i), p = g.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), kay = o.kayitli(g);
+      var ayBasi = d.getDate() === 1, c = 'sg' + (g === S.bugun ? ' bugun' : '') + (g === o.secili ? ' secili' : '') + (kay ? ' kayitli' : '') + (ayBasi ? ' ay-basi' : '');
       if (ayBasi && i < SERIT_GUN - 1) h += '<span class="ay-ayrac" aria-hidden="true"></span>';
-      h += '<button class="' + c + '" data-gun-sec="' + g + '" aria-label="' + d.getDate() + ' ' + AYLAR[d.getMonth()] + ' ' + GUNLER[d.getDay()] + (S.gunler[g] ? ', kayıt var' : '') + '"' + (g === S.gun ? ' aria-current="date"' : '') + '>' +
+      h += '<button class="' + c + '" ' + o.veri + '="' + g + '" aria-label="' + d.getDate() + ' ' + AYLAR[d.getMonth()] + ' ' + GUNLER[d.getDay()] + (kay ? ', kayıt var' : '') + '"' + (g === o.secili ? ' aria-current="date"' : '') + '>' +
         '<small>' + (g === S.bugun ? 'Bugün' : ayBasi ? AY_KISA[d.getMonth()] : GUN_KISA[d.getDay()]) + '</small><b>' + d.getDate() + '</b></button>';
     }
     return h + '</div>';
   }
   // Şerit yeniden çizilince kaydırma yeri korunur; seçili gün görünmüyorsa görünür yapılır
-  function seritKonum() {
-    var el = $('#serit'); if (!el) return;
+  function seritKonum(id) {
+    var el = $('#' + (id || 'serit')); if (!el) return;
     if (S.seritX == null) el.scrollLeft = el.scrollWidth; else el.scrollLeft = S.seritX;
     var s = el.querySelector('.secili');
     if (s) { var sol = s.offsetLeft - el.offsetLeft, sag = sol + s.offsetWidth; if (sol < el.scrollLeft || sag > el.scrollLeft + el.clientWidth) el.scrollLeft = sag - el.clientWidth + 8; }
@@ -549,7 +553,7 @@
         'Su ' + bicim(su / 1000, 2) + ' litre' + (hs ? ', hedef ' + bicim(hs / 1000, 2) : '') + '. Dokun: su ekle') +
       listeSatir('adim-dugme', 'footsteps', 'adim', 'Adım', '<i>' + (isFinite(adim) ? bicim(adim) : '—') + '</i>' + (ha ? ' / ' + bicim(ha) : ''), ha && isFinite(adim) ? adim / ha : 0,
         'Adım ' + (isFinite(adim) ? bicim(adim) : 'girilmedi') + (ha ? ', hedef ' + bicim(ha) : '') + '. Dokun: adım gir') +
-      listeSatir('antrenman-dugme', 'barbell', 'antrenman', 'Antrenman', '2. sürümde', -1, 'Antrenman, 2. sürümde geliyor') +
+      (function () { var o = ANT ? ANT.ozet(S.gun) : { deger: '—', oran: -1, aria: 'Antrenman' }; return listeSatir('antrenman-dugme', 'barbell', 'antrenman', 'Antrenman', o.deger, o.oran, o.aria); })() +
       '</div></section>';
     return h;
   }
@@ -588,8 +592,9 @@
       ciz(); bildir('⚠ O gün açılamadı, internet bağlantını kontrol et');
     });
   }
-  function takvimAc() {
-    var ay = S.gun.slice(0, 7);
+  function takvimAc(o) {
+    o = o || { secili: S.gun, kayitli: function (g) { return !!S.gunler[g]; }, sec: gunDegistir };
+    var ay = o.secili.slice(0, 7);
     function icerik() {
       var p = ay.split('-'), y = +p[0], m = +p[1] - 1;
       var ilk = new Date(y, m, 1), gunSay = new Date(y, m + 1, 0).getDate(), bas = (ilk.getDay() + 6) % 7;
@@ -599,19 +604,19 @@
       for (var i = 0; i < bas; i++) h += '<span></span>';
       for (var d = 1; d <= gunSay; d++) {
         var g = ay + '-' + iki(d), gelecek = g > S.bugun;
-        h += '<button class="tgun' + (g === S.gun ? ' secili' : '') + (g === S.bugun ? ' bugun' : '') + (S.gunler[g] ? ' kayitli' : '') + '" data-gun="' + g + '"' +
-          (gelecek ? ' disabled' : '') + ' aria-label="' + d + ' ' + AYLAR[m] + (S.gunler[g] ? ', kayıt var' : '') + '">' + d + '</button>';
+        h += '<button class="tgun' + (g === o.secili ? ' secili' : '') + (g === S.bugun ? ' bugun' : '') + (o.kayitli(g) ? ' kayitli' : '') + '" data-gun="' + g + '"' +
+          (gelecek ? ' disabled' : '') + ' aria-label="' + d + ' ' + AYLAR[m] + (o.kayitli(g) ? ', kayıt var' : '') + '">' + d + '</button>';
       }
       h += '</div><p class="ipucu">Noktalı günlerde kayıt var.</p>';
-      if (!bugunMu()) h += '<button class="ana-dugme" data-bugune>Bugüne dön</button>';
+      if (o.secili !== S.bugun) h += '<button class="ana-dugme" data-bugune>Bugüne dön</button>';
       return h;
     }
     function bagla() {
       document.querySelectorAll('#pencere [data-ay]').forEach(function (b) {
         b.onclick = function () { var p = ay.split('-'); ay = tarihMetni(new Date(+p[0], +p[1] - 1 + (+b.getAttribute('data-ay')), 1)).slice(0, 7); pencereIcerik(icerik(), bagla, true); };
       });
-      document.querySelectorAll('#pencere [data-gun]').forEach(function (b) { b.onclick = function () { pencereKapat(); gunDegistir(b.getAttribute('data-gun')); }; });
-      document.querySelectorAll('#pencere [data-bugune]').forEach(function (b) { b.onclick = function () { pencereKapat(); gunDegistir(S.bugun); }; });
+      document.querySelectorAll('#pencere [data-gun]').forEach(function (b) { b.onclick = function () { pencereKapat(); o.sec(b.getAttribute('data-gun')); }; });
+      document.querySelectorAll('#pencere [data-bugune]').forEach(function (b) { b.onclick = function () { pencereKapat(); o.sec(S.bugun); }; });
     }
     pencereAc('Gün seç', icerik(), bagla, true);
   }
@@ -666,6 +671,7 @@
       return;
     }
     if (S.ekran === 'mutfak') { mutfakCiz(ana); durumGoster(); acilisKapat(); return; }
+    if (S.ekran === 'antrenman' && ANT) { ANT.ciz(ana); durumGoster(); acilisKapat(); return; }
     var hk = hedef('kalori'), hp = hedef('protein'), hs = hedef('su_ml'), ha = hedef('adim');
     var t = toplamlar(S.kayitlar), su = S.gunluk.su || 0, adim = sayi(S.gunluk.adim);
     var h = '';
@@ -933,7 +939,7 @@
     document.querySelectorAll('[data-sonra]').forEach(function (b) { b.onclick = function () { sonraDe(b.getAttribute('data-sonra')); ciz(); }; });
     $('#su-dugme').onclick = suAc;
     $('#adim-dugme').onclick = adimAc;
-    $('#antrenman-dugme').onclick = function () { bildir('Antrenman ekranı 2. sürümde geliyor'); };
+    $('#antrenman-dugme').onclick = function () { if (ANT) ANT.gunSec(S.gun); ekranSec('antrenman'); };
     $('#agri-dugme').onclick = function () { agriAc(); };
     $('#profil-dugme').onclick = profilMenu;
     $('#durum').onclick = function () {
@@ -1698,8 +1704,9 @@
       };
     });
   }
-  function yeniNot() {
-    var sec = { tur: '', bolge: '', taraf: '' }, siddet = 2, yaz = false, hareket = '', not = '';
+  function yeniNot(on) {
+    on = on && on.tur ? on : {}; // 1.9: Antrenmanı bitir › ağrı: tür dolu gelir, kaydedince on.sonra çalışır
+    var sec = { tur: on.tur || '', bolge: '', taraf: '' }, siddet = 2, yaz = false, hareket = on.hareket || '', not = '';
     function bolgeListe(tur) {
       var l = (TUR_BOLGE[tur] || TUR_BOLGE['diğer']).slice();
       ekBolgeler().forEach(function (x) { if (l.indexOf(x) < 0) l.push(x); });
@@ -1726,7 +1733,7 @@
       if ($('#n-hareket')) hareket = $('#n-hareket').value;
       if ($('#n-not')) not = $('#n-not').value;
       var hazir = !!(sec.tur && sec.bolge && sec.taraf);
-      var h = '<h3 style="margin:8px 0 4px">Yeni not</h3><div class="not-liste">' +
+      var h = (on.tur ? '' : '<h3 style="margin:8px 0 4px">Yeni not</h3>') + '<div class="not-liste">' +
         satir('n-tur', 'Tür', TURLER, sec.tur, false) +
         satir('n-bolge', 'Bölge', sec.tur ? bolgeListe(sec.tur) : [], yaz ? '' : sec.bolge, !sec.tur, false, '<option value="__diger">Diğer…</option>') +
         (yaz ? '<div class="ek-bolge"><input id="n-bolge-yaz" type="text" maxlength="24" placeholder="Bölge adı, ör. ön kol" aria-label="Bölge adı"><button class="ana-dugme dar" id="n-bolge-tamam">Tamam</button></div>' : '') +
@@ -1767,6 +1774,7 @@
             hareket: $('#n-hareket') ? $('#n-hareket').value.trim() : '', not: $('#n-not').value.trim() };
           islemEkle('agri_ekle', v);
           S.agri.push({ 'ID': v.id, 'Açılış': v.acilis, 'Tür': v.tur, 'Bölge': v.bolge, 'Taraf': v.taraf, 'Şiddet': v.siddet, 'Hareket': v.hareket, 'Not': v.not, 'Durum': 'açık' });
+          if (on.sonra) { on.sonra(v); return; }
           pencereKapat(); ciz(); bildir('✅ Not kaydedildi');
         };
       }, true);
@@ -2207,7 +2215,8 @@
   }
   /* Veri ve hesap: grup grup sıfırlama (önce Drive yedeği) */
   var SIFIR_LISTE = [['besinlerim', 'Besinlerim', 'besin'], ['tarifler', 'Tariflerim', 'tarif'], ['kayitlar', 'Öğün kayıtları, su, adım, uyku', 'öğün kaydı'],
-    ['olculer', 'Kilo ve bel ölçüleri', 'ölçüm'], ['agri', 'Ağrı notları', 'not'], ['hedefler', 'Hedefler', 'hedef'], ['ayarlar', 'Uygulama ayarları (varsayılana döner)', 'ayar']];
+    ['olculer', 'Kilo ve bel ölçüleri', 'ölçüm'], ['agri', 'Ağrı notları', 'not'], ['hedefler', 'Hedefler', 'hedef'],
+    ['antrenman', 'Antrenman kayıtları', 'gün'], ['programlar', 'Antrenman programları ve hareketlerim', 'program'], ['ayarlar', 'Uygulama ayarları (varsayılana döner)', 'ayar']];
   var yedekleniyor = false;
   function veriAc() {
     var secili = {};
@@ -2277,6 +2286,18 @@
         });
       };
     }, false, '', { ad: 'Veri', fn: veriAc });
+  }
+  /* ---------- 1.9: Antrenman ekranı (antrenman.js) ---------- */
+  var ANT = null;
+  if (window.ZA) {
+    var antA = null;
+    ANT = window.ZA({
+      S: S, $: $, esc: esc, ik: ik, sayi: sayi, bicim: bicim, kimlik: kimlik, titret: titret, sadelestir: sadelestir, AYLAR: AYLAR, GUN_KISA: GUN_KISA,
+      ayar: ayar, ayarYaz: ayarYaz, islemEkle: islemEkle, bildir: bildir, ciz: function () { ciz(); },
+      pencereAc: pencereAc, pencereIcerik: pencereIcerik, pencereKapat: pencereKapat, aramaSil: aramaSil, aramaSilBagla: aramaSilBagla,
+      gunKaydir: gunKaydir, tarihKisa: tarihKisa, agriKademe: agriKademe, sonSiddet: sonSiddet, yeniNot: function (o) { yeniNot(o); },
+      serit: serit, seritKonum: seritKonum, takvimAc: takvimAc
+    });
   }
   window.addEventListener('online', gonder);
   setInterval(gonder, 30000);

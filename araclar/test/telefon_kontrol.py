@@ -6,6 +6,7 @@ Görüntüler ayrıca Evidence Collector rolünde gözle incelenir (bkz. OKUBENI
 Kullanım: python3 -I telefon_kontrol.py <port> <çıktı klasörü> [koyu]
 Çıktı: <klasör>/<genişlik>/*.png, kolaj-<genişlik>.jpg, rapor.txt · Hata varsa çıkış kodu 1.
 """
+import urllib.request
 import asyncio, sys, os
 from playwright.async_api import async_playwright
 
@@ -73,6 +74,7 @@ async def bir_ekran(b, W, H):
     c = await b.new_context(viewport={'width': W, 'height': H}, device_scale_factor=2, is_mobile=True, has_touch=True,
                             locale='tr-TR', timezone_id='Europe/Istanbul', reduced_motion='reduce', color_scheme='dark' if KOYU else 'light')
     pg = await c.new_page(); sayfa_hata = []
+    urllib.request.urlopen(f'http://localhost:{PORT}/_ant_sifirla').read()
     pg.on('pageerror', lambda e: sayfa_hata.append(str(e)))
     await pg.clock.set_fixed_time('2026-11-19T13:20:00+03:00')
     await pg.goto(f'http://localhost:{PORT}/#k=x'); await pg.wait_for_selector('.ozet-kart'); await pg.wait_for_timeout(1300)
@@ -205,6 +207,46 @@ async def bir_ekran(b, W, H):
             geri = await pg.query_selector('#pencere .geri')
             if geri: await geri.tap(); await bekle()
     await adim('ayarlar', ayarlar); await kapat()
+
+    # ---------- Antrenman (1.9): sıfırdan başlayan biri gibi ----------
+    async def antrenman():
+        await pg.tap('[data-ekran=antrenman]'); await durum('ant-bos')
+        await pg.tap('[data-a-hazir=hz-tum]'); await durum('ant-hazir')
+        await kaydir_sabit_mi('ant-hazir', 'pencere', '#pencere-baslik')
+        await pg.tap('#hz-kullan'); await bekle(900); await durum('ant-tanisma-1')
+        await pg.tap('[data-t=yer][data-d=ev]'); await pg.tap('#t-devam'); await durum('ant-tanisma-2')
+        await pg.tap('[data-t=ekipman][data-d=sandalye]'); await pg.tap('#t-devam'); await durum('ant-tanisma-3')
+        await pg.tap('[data-t=durum][data-d=ayakta]'); await pg.tap('#t-devam'); await durum('ant-tanisma-4')
+        await pg.tap('[data-t=hassas][data-d="kol"]'); await durum('ant-tanisma-uzuv')
+        await pg.tap('[data-u="kol"][data-ut=sol]'); await pg.tap('[data-u="kol"][data-ud=agri]'); await pg.tap('[data-t=hassas][data-d="diz"]')
+        await pg.tap('#t-devam'); await bekle(500); await durum('ant-dinlenme')
+        await pg.tap('[data-a-gun="2026-11-18"]'); await durum('ant-gun')
+        for i in [0, 2, 3]: await pg.tap(f'.an-set:not(.ekle):not(.tamam) >> nth={i}'); await bekle(150)
+        await pg.tap('.an-set.tamam >> nth=1'); await durum('ant-set-duzen')
+        await pg.tap('[data-a-tekrar="1"]'); await bekle(150)
+        await pg.evaluate("window.scrollTo(0, document.body.scrollHeight)"); await durum('ant-gun-alt'); await pg.evaluate("window.scrollTo(0,0)")
+        await pg.tap('[data-a-kisa="1"]'); await durum('ant-kisa')
+        await pg.tap('[data-a-kisa="0"]'); await bekle()
+        await pg.tap('[data-a-detay] >> nth=2'); await durum('ant-detay')
+        await kaydir_sabit_mi('ant-detay', 'pencere', '#pencere-baslik'); await kapat()
+        await pg.tap('[data-a-bitir]'); await durum('ant-bitir')
+        await pg.tap('[data-b-agri=evet]'); await durum('ant-bitir-agri'); await pg.tap('#b-tamam'); await durum('ant-agri-not'); await kapat()
+        await pg.tap('[data-a-sekme=program]'); await durum('ant-program')
+        await pg.tap('[data-a-program-duzenle]'); await durum('ant-program-duzenle')
+        await kaydir_sabit_mi('ant-program-duzenle', 'pencere', '#pencere-baslik')
+        await pg.tap('[data-p-ant] >> nth=0'); await durum('ant-antrenman-duzenle')
+        await pg.tap('[data-a-oge] >> nth=2'); await durum('ant-hareket-ayar')
+        await pg.tap('#h-tamam'); await bekle()
+        await pg.tap('[data-a-ekle-bolum=ana]'); await durum('ant-hareket-sec')
+        await odak_kayiyor_mu('ant-hareket-sec', '#hs-ara')
+        await pg.tap('[data-hs] >> nth=0'); await durum('ant-hareket-sec-sepet'); await kapat()
+        await pg.tap('[data-a-sekme=hareket]'); await bekle(600); await durum('ant-hareketler')
+        await kaydir_sabit_mi('ant-hareketler', None, '.m-ust')
+        await odak_kayiyor_mu('ant-hareketler', '#a-ara')
+        await pg.tap('[data-a-filtre=bolge]'); await durum('ant-filtre'); await pg.tap('[data-f="bacak"]'); await durum('ant-filtre-bacak')
+        await pg.tap('[data-a-kendi]'); await durum('ant-kendi'); await kapat()
+        await pg.tap('[data-ekran=bugun]'); await bekle()
+    await adim('antrenman', antrenman); await kapat()
 
     for h in sayfa_hata: yaz(W, 'sayfa', '❌', 'Sayfa hatası (JS)', h[:160])
 
