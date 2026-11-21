@@ -98,6 +98,18 @@ async def main():
         kontrol('Kısa ad tabloya yazıldı', i >= 0 and any(len(r) > i and r[i] == 'Rutin' for r in t[1:]), t[:2])
         await foto('05-hafta-tablo')
 
+        # 6b) 1.10.4: başka ekrana gidip dönünce iki sekme de en üstten başlar; aynı ekranda sekme değişirken kaldığı yer korunur
+        await pg.tap('[data-ekran=mutfak]'); await bekle(500)
+        await pg.tap('[data-m-sekme=tarif]'); await bekle(300); await pg.evaluate("window.scrollTo(0, 400)"); await bekle(200)
+        await pg.tap('[data-m-sekme=besin]'); await bekle(300); await pg.evaluate("window.scrollTo(0, 900)"); await bekle(200)
+        await pg.tap('[data-m-sekme=tarif]'); await bekle(300); y1 = await pg.evaluate('scrollY')
+        kontrol('Aynı ekranda sekmeye dönünce kaldığı yer korunur', abs(y1 - 400) < 40 or not await pg.evaluate('document.body.scrollHeight > innerHeight + 400'), y1)
+        await pg.tap('[data-ekran=antrenman]'); await bekle(500); await pg.tap('[data-ekran=mutfak]'); await bekle(500)
+        y2 = await pg.evaluate('scrollY'); await pg.tap('[data-m-sekme=besin]'); await bekle(300); y3 = await pg.evaluate('scrollY')
+        kontrol('Başka ekrandan dönünce iki sekme de en üstten başlar', y2 < 5 and y3 < 5, [y2, y3])
+        await pg.tap('[data-ekran=antrenman]'); await bekle(500); await pg.tap('[data-a-sekme=program]'); await bekle(400)
+        kontrol('Kaldığın yer doğru adla saklanıyor', await pg.evaluate("(window.dispatchEvent(new Event('pagehide')), !!localStorage.getItem('zindem-konum') && !localStorage.getItem('[object Object]'))"))
+
         # 7) Kaldığın yerden devam: Antrenman › Programım → yeniden aç
         await pg.evaluate("window.dispatchEvent(new Event('pagehide'))")
         await pg.reload(); await pg.wait_for_selector('.m-ust, .ozet-kart'); await bekle(1300)
@@ -109,7 +121,7 @@ async def main():
         gelen = {}
         pg.on('response', lambda r: gelen.__setitem__(r.url.split('/')[-1], r.from_service_worker))
         await pg.reload(); await pg.wait_for_selector('.m-ust, .ozet-kart'); await bekle(1500)
-        kontrol('Stil ve kod telefondan geldi', gelen.get('stil.css?v=30') and gelen.get('uygulama.js?v=27'), {k: v for k, v in gelen.items() if '?v=' in k})
+        kontrol('Stil ve kod telefondan geldi', gelen.get('stil.css?v=31') and gelen.get('uygulama.js?v=28'), {k: v for k, v in gelen.items() if '?v=' in k})
         kontrol('Veri isteği telefondan gelmedi', not any(v for k, v in gelen.items() if 'gun=' in k), [k for k, v in gelen.items() if v])
 
         # 9) İlerleme iskeleti ve açılış ölçümü
@@ -119,6 +131,19 @@ async def main():
         await pg.tap('.ekran-ust [data-profil]'); await bekle(400); await pg.tap('#pm-ayarlar'); await bekle(400); await pg.tap('#a-veri'); await bekle(800)
         v = await pg.inner_text('#pencere'); kontrol('Veri ve hesap: son açılış süresi', 'Toplam' in v and 'sunucu' in v, v[-300:])
         await pg.evaluate("document.getElementById('pencere').scrollTop = 99999"); await foto('07-acilis-suresi')
+        # 10) Aşağı çekince titreme yok: bırakınca açılış animasyonu yeniden oynamamalı (hareket azaltma kapalıyken)
+        c2 = await b.new_context(viewport={'width': 360, 'height': 780}, is_mobile=True, has_touch=True, locale='tr-TR', timezone_id='Europe/Istanbul')
+        p2 = await c2.new_page()
+        await p2.goto(f'http://localhost:{PORT}/#k=x'); await p2.wait_for_selector('.ozet-kart'); await p2.wait_for_timeout(1300)
+        IZLE = """() => { window.__anim = []; const p = document.getElementById('pencere');
+          p.addEventListener('animationstart', e => window.__anim.push(e.animationName)); }"""
+        for dy, ad in [(60, 'yerine dönerken'), (200, 'kapanırken')]:
+            await p2.tap('.ogun-kart [data-ekle]'); await p2.wait_for_timeout(600)
+            await p2.evaluate(IZLE); await p2.evaluate(CEK, dy); await p2.wait_for_timeout(300)
+            a = await p2.evaluate('window.__anim')
+            kontrol(f'Aşağı çekme {ad} pencere titremiyor', 'yukari' not in a, a)
+            await p2.evaluate("(()=>{const k=document.getElementById('kapat'); if(k) k.click();})()"); await p2.wait_for_timeout(500)
+        await c2.close()
         for x in hata: kontrol('JS hatası yok', False, x[:160])
         await b.close()
     print('\n'.join(sonuc)); print(f"{sum(1 for x in sonuc if x[0]=='✅')}/{len(sonuc)} geçti")

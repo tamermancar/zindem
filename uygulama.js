@@ -18,7 +18,7 @@
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
   var SUNUCU_SURUM = '1.10.3';
-  var SURUM = '1.10.3';
+  var SURUM = '1.10.4';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -1893,6 +1893,8 @@
     if (e === S.ekran) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     S.ekran = e; titret();
     menuIsaretle(e);
+    // 1.10.4: başka ekrana geçince sekmelerin kaydırma yerleri unutulur; kaldığı yer sadece aynı ekran içinde sekme değiştirirken korunur
+    Object.keys(KONUM).forEach(function (k) { if (k.indexOf('p|') !== 0) delete KONUM[k]; });
     ciz(); window.scrollTo(0, 0);
   }
   function menuIsaretle(e) {
@@ -1905,16 +1907,17 @@
   }
   /* 1.10.3: Kaldığın yerden devam. Telefon uygulamayı kapatıp yeniden açtığında son ekran ve sekme 30 dakika hatırlanır.
      Sadece ekranın adı tutulur (kişisel veri değil); tarayıcı verisi silinirse Bugün'den açılır. */
-  var KONUM = 'zindem-konum';
+  var KONUM_ANAHTARI = 'zindem-konum';
   function konumKaydet() {
     try {
       var s2 = S.ekran === 'mutfak' ? M.sekme : S.ekran === 'antrenman' && ANT ? ANT.sekme() : S.ekran === 'ilerleme' && ILR ? ILR.sekme() : '';
-      localStorage.setItem(KONUM, JSON.stringify({ e: S.ekran, s: s2, t: Date.now() }));
+      localStorage.setItem(KONUM_ANAHTARI, JSON.stringify({ e: S.ekran, s: s2, t: Date.now() }));
     } catch (x) { /* depolama kapalı olabilir */ }
   }
   function konumYukle() {
     try {
-      var k = JSON.parse(localStorage.getItem(KONUM) || 'null');
+      localStorage.removeItem('[object Object]'); // 1.10.3'te yanlış adla yazılan kayıt
+      var k = JSON.parse(localStorage.getItem(KONUM_ANAHTARI) || 'null');
       if (!k || Date.now() - k.t > 30 * 60000 || !/^(mutfak|antrenman|ilerleme)$/.test(k.e)) return;
       S.ekran = k.e;
       if (k.e === 'mutfak' && /^(tarif|besin)$/.test(k.s)) M.sekme = k.s;

@@ -116,7 +116,7 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .kapat .ikon { width: 20px; height: 20px; stroke-width: 2.4; }
 /* Sabit başlık: kaydırınca başlık, X ve (varsa) arama + sekmeler üstte kalır */
 .pencere-bas { position: sticky; top: -8px; z-index: 6; background: var(--kart); margin: -8px -16px 0; padding: 8px 16px 2px; touch-action: pan-x; } /* 1.10.3: aşağı çekince pencere kapanır */
-.pencere.cekiliyor { animation: none; transition: none; }
+.pencere.cekiliyor { transition: none; } /* animation: none konmaz: kaldırılınca açılış animasyonu yeniden oynar ve pencere titrer */
 .pencere-bas .arama { margin: 10px 0 2px; }
 .pencere-bas .grup-cipler { margin-top: 6px; }
 .pencere-bas .arama-ikon { top: 22px; }
