@@ -18,7 +18,7 @@
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
   var SUNUCU_SURUM = '1.10.5';
-  var SURUM = '1.11';
+  var SURUM = '1.11.1';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -31,7 +31,14 @@
   /* ---------- Yardımcılar ---------- */
   function $(s, k) { return (k || document).querySelector(s); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function sayi(v) { if (v === '' || v == null) return NaN; return parseFloat(String(v).replace(',', '.')); }
+  // 1.11: elle yazılan sayı: virgül ondalık; virgül varsa nokta binlik sayılır ("1.250,5"); virgülsüz "1.000" gibi 3'lü gruplar da binlik
+  function sayi(v) {
+    if (v === '' || v == null) return NaN; if (typeof v === 'number') return v;
+    var t = String(v).replace(/\s/g, '');
+    if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+    return parseFloat(t);
+  }
   function bicim(n, ondalik) {
     if (!isFinite(n)) return '—';
     return Number(n).toLocaleString('tr-TR', { maximumFractionDigits: ondalik == null ? 0 : ondalik });
@@ -99,7 +106,7 @@
       // 1.6: sablon = malzemeleri hazır, miktarları elle girilen tarif · x = listeden kaldırıldı (eski kayıtlar için durur) · kisi = ev yemeğinin porsiyon sayısı
       b[x.id] = { id: x.id, ad: x.ad, kat: x.g || x.kat, grup: x.g || grupBul(x.kat, x.ad), o: x.o || null, porsiyon: !!x.porsiyon, kcal: x.kcal, p: x.p,
         olcu: x.porsiyon ? [['1 porsiyon', 1]] : x.olcu.slice(), kaynak: x.kaynak, benim: false, malzeme: !!x.m, malzemeler: x.malzemeler || null,
-        sablon: x.sablon || null, gizli: !!x.x, kisi: x.kisi || 0 };
+        sablon: x.sablon || null, gizli: !!x.x, kisi: x.kisi || 0, sk: !!x.sk };
     });
     S.besinlerim.forEach(function (r) {
       var id = r['ID']; if (!id) return;
@@ -348,7 +355,7 @@
     if (istenen < bas) bas = istenen.slice(0, 8) + '01';
     return Promise.all([
       fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }).then(function (j) { if (S.olcum && S.olcum.sunucu == null) { S.olcum.sunucu = performance.now() - basP; S.olcum.tablo = j && j.sure; } return j; }),
-      S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=7').then(function (r) { return r.json(); })
+      S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=8').then(function (r) { return r.json(); })
     ]).then(function (sonuc) {
       var c = sonuc[0];
       if (!c.ok) { S.hata = c.hata === 'yetkisiz' ? 'yetkisiz' : 'Sunucu hatası: ' + c.hata; return; }
@@ -1034,7 +1041,7 @@
         '<h2 id="pencere-baslik">' + baslik + '</h2><button class="kapat" id="kapat" aria-label="Kapat">' + ik('x') + '</button></div>') +
       (sabit || '') + '</div><div id="pencere-ic">' + icerik + '</div>';
     if (geri) $('#p-geri').onclick = geri.fn;
-    p.scrollTop = 0;
+    p.scrollTop = 0; p.classList.remove('kaydi');
     p.hidden = false; $('#perde').hidden = false;
     document.body.style.overflow = 'hidden';
     $('#kapat').onclick = pencereKapat; $('#perde').onclick = pencereKapat;
@@ -1042,8 +1049,11 @@
   }
   function pencereIcerik(icerik, bagla, konumuKoru) {
     var p = $('#pencere'), y = p.scrollTop;
-    $('#pencere-ic').innerHTML = icerik; if (bagla) bagla(p); p.scrollTop = konumuKoru ? y : 0;
+    $('#pencere-ic').innerHTML = icerik; if (bagla) bagla(p); p.scrollTop = konumuKoru ? y : 0; baslikGolge();
   }
+  // 1.11: liste kayınca sabit başlığın altında çizgi + gölge
+  function baslikGolge() { var p = $('#pencere'); p.classList.toggle('kaydi', p.scrollTop > 2); }
+  $('#pencere').addEventListener('scroll', baslikGolge, { passive: true });
   function pencereKapat(hemen) {
     var p = $('#pencere'), pr = $('#perde');
     if (p.hidden || kapanisSaati) return;
@@ -1233,11 +1243,17 @@
       (mz ? ik('chef-hat', 'tarif-ikon') : '') + esc(k['Ad']) + (b && b.benim ? ' <span class="etiket">Benim</span>' : '') + '</b>' + miktar +
       '<small>' + bicim(sayi(k['kcal'])) + ' kcal · ' + (pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(sayi(k['Protein']), 1) + ' g protein') + '</small></div>' +
       adimSatiri(anahtar, k['Ad'], m, k['Ölçü'], mz ? 0.5 : miktarAdimi(b, k['Ölçü'])) + '</div>';
+    if (b && b.sk && S.besinler[SEKER]) { // 1.11: çay/kahve: "Şekerli" seçilince küp şeker adedi (öğüne ayrı kayıt olarak yazılır)
+      var sk = ogunKaydi(SEKER);
+      h += '<div class="seker-satir"><button class="cip' + (sk ? ' secili' : '') + '" aria-pressed="' + !!sk + '" data-seker="' + (sk ? 'kapat' : 'ac') + '">Şekerli</button>' +
+        (sk ? '<span class="seker-ad">Küp şeker</span>' + adimSatiri('k:' + sk['ID'], 'Küp şeker', sayi(sk['Miktar']), sk['Ölçü'], miktarAdimi(S.besinler[SEKER], sk['Ölçü'])) : '') + '</div>';
+    }
     if (acik && olcuVar) h += '<div class="cipler olcu-secim" role="group" aria-label="Ölçü seç">' + olcuSecenekleri(b).map(function (o) {
       return '<button class="cip' + (o === k['Ölçü'] ? ' secili' : '') + '" aria-pressed="' + (o === k['Ölçü']) + '" data-olcu-sec="' + anahtar + '" data-olcu="' + esc(o) + '">' + esc(olcuEtiket(o)) + '</button>';
     }).join('') + (k['Ölçü'] === 'gram' ? '<span class="ipucu">artış ' + miktarAdimi(b, 'gram') + ' g</span>' : '') + '</div>';
     return h + silDugmesi(anahtar, 'Kaldır') + '</div>';
   }
+  var SEKER = 't-kup-seker';
   // Listeden ekleme: son yediğin ölçüyle hemen öğüne yazılır
   function listedenEkle(b) {
     if (!b || ogunKaydi(b.id)) return;
@@ -1264,6 +1280,13 @@
   $('#pencere').addEventListener('click', function (e) {
     var ek = e.target.closest && e.target.closest('#sonuclar [data-sec]');
     if (ek) { listedenEkle(S.besinler[ek.getAttribute('data-sec')]); return; }
+    var se = e.target.closest && e.target.closest('#sonuclar [data-seker]');
+    if (se) {
+      var skk = ogunKaydi(SEKER);
+      if (se.getAttribute('data-seker') === 'ac' && !skk) { kayitEkle(S.besinler[SEKER], '1 küp', 1, penOgun, true); titret(); ciz(); listeYenile(SEKER, true); duyur('Küp şeker eklendi, 1 küp'); }
+      else if (skk) ogundenCikar(skk['ID']);
+      return;
+    }
     var b = e.target.closest && e.target.closest('#sonuclar [data-art^="k:"],#sonuclar [data-az^="k:"],#sonuclar [data-olcu-ac^="k:"],#sonuclar [data-olcu-sec^="k:"]');
     if (!b) return;
     var anahtar = b.getAttribute('data-art') || b.getAttribute('data-az') || b.getAttribute('data-olcu-ac') || b.getAttribute('data-olcu-sec');
@@ -1282,7 +1305,7 @@
       islemEkle('ogun_guncelle', { id: id, miktar: m, olcu: yeniO, gram: k['Gram'], kcal: k['kcal'], p: k['Protein'] });
       S.olcuAcik = ''; ciz();
     }
-    listeYenile(bid);
+    listeYenile(bid, bid === SEKER); // şeker çayın satırında da görünür: hepsi yenilenir
   });
   /* Öğün çubuğu: hep görünür. Çıkarınca 8 sn "Çıkarıldı · … / Geri al" (üstteki balon arama kutusunu örterdi) */
   var cGeri = null;
@@ -1555,6 +1578,7 @@
         var i = +k.getAttribute('data-tm'); T.satirlar[i].miktar = sayi(k.value);
         $('#tm-d-' + i).textContent = tmDeger(T.satirlar[i]); $('#tm-toplam').innerHTML = tmToplam();
       };
+      k.onchange = function () { k.value = kutuYaz(T.satirlar[+k.getAttribute('data-tm')].miktar); }; // 1.11: "2.5" → "2,5", "1.000" → "1000"
     });
     document.querySelectorAll('#pencere [data-tn],#pencere [data-ty]').forEach(function (b) {
       b.onclick = function () {

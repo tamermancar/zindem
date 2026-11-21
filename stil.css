@@ -35,6 +35,7 @@
   --golge: 0 6px 24px rgba(27, 21, 53, .08);
   --golge-yuzen: 0 8px 24px rgba(27, 21, 53, .16);
   --golge-sepet: 0 10px 30px rgba(0, 0, 0, .35);
+  --golge-baslik: 0 8px 12px -8px rgba(27, 21, 53, .22); /* 1.11: pencere başlığı kayınca */
   --perde-renk: rgba(16, 12, 31, .5);
   --zemin-isik: radial-gradient(120% 40% at 0% 0%, rgba(124, 92, 255, .14) 0%, transparent 60%), radial-gradient(90% 35% at 100% 25%, rgba(45, 212, 191, .12) 0%, transparent 60%);
 }
@@ -53,6 +54,7 @@ html[data-tema="koyu"] {
   --su-yazi: #7DEFE2; --adim-yazi: #F9A8D4;
   --kilo: #DB5C93; --uyku: #64748B; --u1: #4A3F86; --u2: #7C66E8; --agri-ikon: #F97316;
   --golge: none;
+  --golge-baslik: 0 8px 14px -8px rgba(0, 0, 0, .7);
 }
 
 /* ===== 2. Temel ===== */
@@ -120,8 +122,14 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .pencere-bas .arama { margin: 10px 0 2px; }
 .pencere-bas .grup-cipler { margin-top: 6px; }
 .pencere-bas .arama-ikon { top: 22px; }
-.pencere-bas::after { content: ''; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px; pointer-events: none;
-  background: linear-gradient(var(--kart), transparent); }
+.pencere-bas { transition: box-shadow .15s ease, border-color .15s ease; border-bottom: 1px solid transparent; }
+/* 1.11: liste kayınca başlığın altında ince çizgi + gölge (açık temada ışık gibi duran solgun şerit kaldırıldı) */
+.pencere.kaydi .pencere-bas { border-bottom-color: var(--cizgi); box-shadow: var(--golge-baslik); }
+/* 1.11: sayı kutusunun "–" yer tutucusu dokununca kaybolur (silinecek bir şey sanılmasın) */
+input[placeholder="–"]:focus::placeholder, input[placeholder="—"]:focus::placeholder { color: transparent; }
+/* 1.11: çay/kahve "Şekerli" ve küp şeker adedi */
+.seker-satir { display: flex; align-items: center; gap: 10px; padding: 0 0 10px; flex-wrap: wrap; }
+.seker-satir .seker-ad { flex: 1; min-width: 0; font-size: 12.5px; color: var(--soluk); font-weight: 600; }
 /* Pencere kapanışı */
 .pencere.kapaniyor { animation: asagi .2s ease-in forwards; }
 .perde.kapaniyor { animation: sonuk .2s ease-in forwards; }
