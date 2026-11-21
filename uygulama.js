@@ -17,8 +17,8 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.10.5';
-  var SURUM = '1.11.1';
+  var SUNUCU_SURUM = '1.11.2';
+  var SURUM = '1.11.2';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -341,7 +341,7 @@
     OGUNLER.forEach(function (o) {
       for (var d = gunKaydir(g, -1); d >= S.aralikBas; d = gunKaydir(d, -1)) {
         var l = ((S.gv[d] || {}).kayitlar || []).filter(function (k) { return k['Öğün'] === o.ad && k['Besin ID']; });
-        if (l.length) { sonuc[o.ad] = { gun: d, kayitlar: l.map(function (k) { return { besinId: k['Besin ID'], ad: k['Ad'], miktar: k['Miktar'], olcu: k['Ölçü'], kcal: k['kcal'], p: k['Protein'], gram: k['Gram'], malzemeler: k['Malzemeler'] || '' }; }) }; return; }
+        if (l.length) { sonuc[o.ad] = { gun: d, kayitlar: l.map(function (k) { return { id: k['ID'], bagli: k['Bağlı'] || '', besinId: k['Besin ID'], ad: k['Ad'], miktar: k['Miktar'], olcu: k['Ölçü'], kcal: k['kcal'], p: k['Protein'], gram: k['Gram'], malzemeler: k['Malzemeler'] || '' }; }) }; return; }
       }
       if (S.oncekiBas[o.ad]) sonuc[o.ad] = S.oncekiBas[o.ad];
     });
@@ -425,16 +425,17 @@
     for (var g in S.gv) { var l = S.gv[g].kayitlar; for (var i = l.length - 1; i >= 0; i--) if (l[i]['ID'] === id) l.splice(i, 1); }
   }
   function kayitNesnesi(v) {
-    return { 'ID': v.id, 'Gün': v.gun, 'Saat': v.saat, 'Öğün': v.ogun, 'Besin ID': v.besinId, 'Ad': v.ad, 'Miktar': v.miktar, 'Ölçü': v.olcu, 'Gram': v.gram, 'kcal': v.kcal, 'Protein': v.p, 'Malzemeler': v.malzemeler || '' };
+    return { 'ID': v.id, 'Gün': v.gun, 'Saat': v.saat, 'Öğün': v.ogun, 'Besin ID': v.besinId, 'Ad': v.ad, 'Miktar': v.miktar, 'Ölçü': v.olcu, 'Gram': v.gram, 'kcal': v.kcal, 'Protein': v.p, 'Malzemeler': v.malzemeler || '', 'Bağlı': v.bagli || '' };
   }
   function yuvarla(n) { return Math.round(n * 10) / 10; }
-  function kayitEkle(besin, olcuAd, miktar, ogunK, sessiz) {
+  function kayitEkle(besin, olcuAd, miktar, ogunK, sessiz, bagli) {
     var d = deger(besin, olcuAd, miktar), simdi = new Date();
     var v = {
       id: kimlik('O'), gun: S.gun, saat: saatMetni(simdi), ogun: ogunAdi(ogunK), besinId: besin.id, ad: besin.ad,
       miktar: miktar, olcu: besin.porsiyon ? '1 porsiyon' : olcuAd, gram: d.gram === '' ? '' : yuvarla(d.gram), kcal: Math.round(d.kcal), p: besin.pYok ? '' : yuvarla(d.p),
       malzemeler: besin.tarif ? malzJson(besin.tarif.n, besin.tarif.m) : besin.kopyaMalz || ''
     };
+    if (bagli) v.bagli = bagli; // 1.11.2: çayın şekeri gibi bir kayda ait kayıt
     if (besin.gramP) v.gram = yuvarla(besin.gramP * miktar);
     S.kayitlar.push(kayitNesnesi(v)); S.gunler[S.gun] = 1;
     islemEkle('ogun_ekle', v);
@@ -442,20 +443,40 @@
     return v.id;
   }
   // Silinen kaydı geri ekler ("Geri al"); yeni kaydın kimliğini döner
-  function kayitGeriEkle(eski, sessiz) {
-    if (eski['Malzemeler']) return kayitEkle(kayitBesini({ besinId: eski['Besin ID'], ad: eski['Ad'], miktar: eski['Miktar'], kcal: eski['kcal'], p: eski['Protein'], gram: eski['Gram'], malzemeler: eski['Malzemeler'] }), '1 porsiyon', sayi(eski['Miktar']), ogunKodu(eski['Öğün']), sessiz);
+  function kayitGeriEkle(eski, sessiz, bagli) {
+    var bg = bagli === undefined ? eski['Bağlı'] : bagli;
+    if (eski['Malzemeler']) return kayitEkle(kayitBesini({ besinId: eski['Besin ID'], ad: eski['Ad'], miktar: eski['Miktar'], kcal: eski['kcal'], p: eski['Protein'], gram: eski['Gram'], malzemeler: eski['Malzemeler'] }), '1 porsiyon', sayi(eski['Miktar']), ogunKodu(eski['Öğün']), sessiz, bg);
     var b = S.besinler[eski['Besin ID']];
-    if (b) return kayitEkle(b, eski['Ölçü'] === '1 porsiyon' ? '1 porsiyon' : eski['Ölçü'], sayi(eski['Miktar']), ogunKodu(eski['Öğün']), sessiz);
+    if (b) return kayitEkle(b, eski['Ölçü'] === '1 porsiyon' ? '1 porsiyon' : eski['Ölçü'], sayi(eski['Miktar']), ogunKodu(eski['Öğün']), sessiz, bg);
     return '';
+  }
+  /* 1.11.2: bir kayda bağlı kayıtlar (çayın şekeri). Ana kayıt silinince/taşınınca onlar da; Geri al hepsini yeni bağla geri getirir */
+  function bagliKayitlar(id) { return id ? S.kayitlar.filter(function (k) { return k['Bağlı'] === id; }) : []; }
+  function kayitSilBagliyla(id) {
+    var k = kayitBul(id); if (!k) return null;
+    var paket = { eski: JSON.parse(JSON.stringify(k)), cocuk: bagliKayitlar(id).map(function (c) { return JSON.parse(JSON.stringify(c)); }) };
+    paket.cocuk.forEach(function (c) { kayitCikar(c['ID']); islemEkle('ogun_sil', { id: c['ID'] }); });
+    kayitCikar(id); islemEkle('ogun_sil', { id: id });
+    return paket;
+  }
+  function geriEkleBagliyla(paket, sessiz) {
+    var yid = kayitGeriEkle(paket.eski, true);
+    paket.cocuk.forEach(function (c) { kayitGeriEkle(c, true, yid); });
+    if (!sessiz) ciz();
+    return yid;
+  }
+  function bagliTasi(id, ogunAd) { // ana kayıt başka öğüne geçince bağlıları da (ogun_guncelle bütün değerlerle gider)
+    bagliKayitlar(id).forEach(function (c) {
+      c['Öğün'] = ogunAd;
+      islemEkle('ogun_guncelle', { id: c['ID'], miktar: c['Miktar'], olcu: c['Ölçü'], gram: c['Gram'], kcal: c['kcal'], p: c['Protein'], ogun: ogunAd });
+    });
   }
   function kayitMiktar(id, yeni) {
     var k = kayitBul(id); if (!k) return;
     if (yeni <= 0) {
-      var eski = JSON.parse(JSON.stringify(k));
-      kayitCikar(id);
-      islemEkle('ogun_sil', { id: id });
+      var paket = kayitSilBagliyla(id);
       ciz();
-      bildir(eski['Ad'] + ' silindi', 'Geri al', function () { kayitGeriEkle(eski); });
+      bildir(paket.eski['Ad'] + (paket.cocuk.length ? ' ve şekeri' : '') + ' silindi', 'Geri al', function () { geriEkleBagliyla(paket); });
       return;
     }
     var mz = malzCoz(k['Malzemeler']);
@@ -878,9 +899,13 @@
     var h = '<section class="kart ogun-kart ' + (gb ? 'gelecek ' : '') + (S.gecis || '') + '" role="tabpanel" aria-label="' + o.ad + '" data-kart="' + o.k + '">' +
       '<div class="ogun-ust"><span class="ogun-yazi"><span class="ogun-ad">' + o.ad + (simdi ? '<span class="simdi-rozet">şimdi</span>' : '') + '</span><span class="ogun-ozet">' + ozet + '</span></span>' +
       '<button class="ekle-dugme' + (gb ? ' sessiz' : '') + '" data-ekle="' + o.k + '" aria-label="' + YONELME[o.k] + ' ekle">' + ik('plus') + 'Ekle</button></div>';
-    liste.forEach(function (k) {
+    // 1.11.2: bağlı kayıt (çayın şekeri) ana kaydının hemen altında, kesikli çizgi ve içeriden
+    var idler = {}; liste.forEach(function (k) { idler[k['ID']] = 1; });
+    var sirali = [];
+    liste.forEach(function (k) { if (k['Bağlı'] && idler[k['Bağlı']]) return; sirali.push(k); liste.forEach(function (c) { if (c['Bağlı'] === k['ID']) sirali.push(c); }); });
+    sirali.forEach(function (k) {
       var pYok = k['Protein'] === '' || k['Protein'] == null;
-      var mz = malzCoz(k['Malzemeler']);
+      var mz = malzCoz(k['Malzemeler']), bagliSinif = k['Bağlı'] && idler[k['Bağlı']] ? ' bagli' : '';
       if (mz) { // 1.6: tarif satırı: adına dokununca malzemeler açılır
         h += '<div class="kaydir"><div class="satir tarif-kayit"><button class="bilgi bilgi-dugme" data-tarif-duzelt="' + esc(k['ID']) + '" aria-label="' + esc(k['Ad']) + ': malzemeleri gör ve düzelt">' +
           '<b>' + ik('chef-hat', 'tarif-ikon') + esc(k['Ad']) + '</b><small class="tek">' + esc(malzOzet(mz.m)) + (mz.n > 1 ? ' (' + bicim(mz.n, 1) + ' porsiyonluk)' : '') + '</small><small>' + bicim(sayi(k['kcal'])) + ' kcal · ' +
@@ -888,7 +913,7 @@
           adimSatiri('k:' + k['ID'], k['Ad'], sayi(k['Miktar']), k['Ölçü'], 0.5) + '</div>' + silDugmesi('k:' + k['ID']) + '</div>';
         return;
       }
-      h += '<div class="kaydir"><div class="satir"><button class="bilgi bilgi-dugme" data-kayit-duzelt="' + esc(k['ID']) + '" aria-label="' + esc(k['Ad']) + ': kaydı düzenle"><b>' + esc(k['Ad']) + '</b><small>' + esc(miktarMetni(sayi(k['Miktar']), k['Ölçü'])) + '</small><small>' + bicim(sayi(k['kcal'])) + ' kcal · ' +
+      h += '<div class="kaydir' + bagliSinif + '"><div class="satir"><button class="bilgi bilgi-dugme" data-kayit-duzelt="' + esc(k['ID']) + '" aria-label="' + esc(k['Ad']) + ': kaydı düzenle"><b>' + esc(k['Ad']) + '</b><small>' + esc(miktarMetni(sayi(k['Miktar']), k['Ölçü'])) + '</small><small>' + bicim(sayi(k['kcal'])) + ' kcal · ' +
         (pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(sayi(k['Protein']), 1) + ' g protein') + '</small></button>';
       // 1.6.1: besin listeden silinmiş olsa da artı/eksi çalışır (kaydın kendi değerinden)
       h += adimSatiri('k:' + k['ID'], k['Ad'], sayi(k['Miktar']), k['Ölçü'], miktarAdimi(S.besinler[k['Besin ID']], k['Ölçü']));
@@ -940,14 +965,16 @@
     kart.querySelectorAll('[data-tekrar]').forEach(function (b) {
       b.onclick = function () {
         // 1.11: hepsi doğrudan kayda yazılır + "4 besin kahvaltıya eklendi · Geri al"
-        var k = b.getAttribute('data-tekrar'), onc = S.onceki[ogunAdi(k)], yeni = [];
-        onc.kayitlar.forEach(function (x) {
-          if (x.malzemeler) { var mk = sayi(x.miktar); yeni.push(kayitEkle(kayitBesini(x), '1 porsiyon', isFinite(mk) && mk > 0 ? mk : 1, k, true)); return; }
+        var k = b.getAttribute('data-tekrar'), onc = S.onceki[ogunAdi(k)], yeni = [], esle = {};
+        // 1.11.2: bağlı kayıtlar (çayın şekeri) ana kayıttan sonra gelir ve yeni ana kayda bağlanır
+        onc.kayitlar.slice().sort(function (a, c) { return (a.bagli ? 1 : 0) - (c.bagli ? 1 : 0); }).forEach(function (x) {
+          var bg = x.bagli ? esle[x.bagli] || '' : '';
+          if (x.malzemeler) { var mk = sayi(x.miktar); yeni.push(kayitEkle(kayitBesini(x), '1 porsiyon', isFinite(mk) && mk > 0 ? mk : 1, k, true, bg)); if (x.id) esle[x.id] = yeni[yeni.length - 1]; return; }
           var be = S.besinler[x.besinId]; if (!be || be.sablon) return;
           var o = be.porsiyon ? '1 porsiyon' : x.olcu;
           if (!be.porsiyon && o !== 'gram' && !be.olcu.some(function (z) { return z[0] === o; })) o = sonOlcu(be).olcu;
           var m = sayi(x.miktar);
-          yeni.push(kayitEkle(be, o, isFinite(m) && m > 0 ? m : 1, k, true));
+          yeni.push(kayitEkle(be, o, isFinite(m) && m > 0 ? m : 1, k, true, bg)); if (x.id) esle[x.id] = yeni[yeni.length - 1];
         });
         if (!yeni.length) return;
         S.acikOgun = k; S.seciliOgun = k; titret(); ciz();
@@ -1162,7 +1189,7 @@
     var cipler = $('#grup-cipler'); if (cipler) cipler.hidden = !!qs.length;
     if (!qs.length && grupSec === 'oneri') {
       var gorulen = {};
-      var once = ogunKayitlari().filter(function (k) { return acilisKayit[k['ID']]; });
+      var once = ogunKayitlari().filter(function (k) { return acilisKayit[k['ID']] && !k['Bağlı']; });
       once.forEach(function (k) { gorulen[k['Besin ID']] = 1; });
       if (once.length) h += '<div class="bolum-baslik">' + esc(ogunBulunma(penOgun)) + '</div>' + once.map(ogundeSatir).join('');
       // 1.6: Tarifler en üstte: önce kaydettiklerin, sonra şablonlar
@@ -1213,7 +1240,8 @@
   }
   function ogunKayitlari() { var ad = ogunAdi(penOgun); return S.kayitlar.filter(function (k) { return k['Öğün'] === ad; }); }
   // Bu besinin öğündeki (malzemesiz) kaydı; tarifler de besin kimliğiyle eşleşir
-  function ogunKaydi(id) { var l = ogunKayitlari(); for (var i = l.length - 1; i >= 0; i--) if (l[i]['Besin ID'] === id) return l[i]; return null; }
+  function ogunKaydi(id) { var l = ogunKayitlari(); for (var i = l.length - 1; i >= 0; i--) if (l[i]['Besin ID'] === id && !l[i]['Bağlı']) return l[i]; return null; }
+  function sekerKaydi(icecekId) { var l = bagliKayitlar(icecekId); for (var i = 0; i < l.length; i++) if (l[i]['Besin ID'] === SEKER) return l[i]; return null; }
   function ogunBulunma(k) { return { kahvalti: 'Kahvaltıda', ogle: 'Öğlede', aksam: 'Akşamda', cay: 'Çay saatinde' }[k] || ogunAdi(k); }
   // Listedeki satır: öğünde değilse + düğmesi (satıra dokunmak da ekler); öğündeyse ad · ölçü ▾ · değer ve "− n +" (1.4.2, 1.11)
   function sonucSatiri(b) {
@@ -1243,14 +1271,14 @@
       (mz ? ik('chef-hat', 'tarif-ikon') : '') + esc(k['Ad']) + (b && b.benim ? ' <span class="etiket">Benim</span>' : '') + '</b>' + miktar +
       '<small>' + bicim(sayi(k['kcal'])) + ' kcal · ' + (pYok ? '<span class="uyari-yazi">⚠ protein bilinmiyor</span>' : bicim(sayi(k['Protein']), 1) + ' g protein') + '</small></div>' +
       adimSatiri(anahtar, k['Ad'], m, k['Ölçü'], mz ? 0.5 : miktarAdimi(b, k['Ölçü'])) + '</div>';
-    if (b && b.sk && S.besinler[SEKER]) { // 1.11: çay/kahve: "Şekerli" seçilince küp şeker adedi (öğüne ayrı kayıt olarak yazılır)
-      var sk = ogunKaydi(SEKER);
-      h += '<div class="seker-satir"><button class="cip' + (sk ? ' secili' : '') + '" aria-pressed="' + !!sk + '" data-seker="' + (sk ? 'kapat' : 'ac') + '">Şekerli</button>' +
-        (sk ? '<span class="seker-ad">Küp şeker</span>' + adimSatiri('k:' + sk['ID'], 'Küp şeker', sayi(sk['Miktar']), sk['Ölçü'], miktarAdimi(S.besinler[SEKER], sk['Ölçü'])) : '') + '</div>';
-    }
     if (acik && olcuVar) h += '<div class="cipler olcu-secim" role="group" aria-label="Ölçü seç">' + olcuSecenekleri(b).map(function (o) {
       return '<button class="cip' + (o === k['Ölçü'] ? ' secili' : '') + '" aria-pressed="' + (o === k['Ölçü']) + '" data-olcu-sec="' + anahtar + '" data-olcu="' + esc(o) + '">' + esc(olcuEtiket(o)) + '</button>';
     }).join('') + (k['Ölçü'] === 'gram' ? '<span class="ipucu">artış ' + miktarAdimi(b, 'gram') + ' g</span>' : '') + '</div>';
+    if (b && b.sk && S.besinler[SEKER]) { // 1.11: çay/kahve: "Şekerli" seçilince küp şeker adedi (öğüne ayrı kayıt olarak yazılır)
+      var sk = sekerKaydi(k['ID']);
+      h += '<div class="seker-satir"><button class="cip' + (sk ? ' secili' : '') + '" aria-pressed="' + !!sk + '" data-seker="' + (sk ? 'kapat' : 'ac') + '" data-icecek="' + esc(k['ID']) + '">Şekerli</button>' +
+        (sk ? '<span class="seker-ad">(küp şeker)</span>' + adimSatiri('k:' + sk['ID'], 'Küp şeker', sayi(sk['Miktar']), sk['Ölçü'], miktarAdimi(S.besinler[SEKER], sk['Ölçü'])) : '') + '</div>';
+    }
     return h + silDugmesi(anahtar, 'Kaldır') + '</div>';
   }
   var SEKER = 't-kup-seker';
@@ -1264,12 +1292,11 @@
   }
   // Öğünden çıkarma (Ekle penceresinde): Geri al çubukta
   function ogundenCikar(id) {
-    var k = kayitBul(id); if (!k) return;
-    var eski = JSON.parse(JSON.stringify(k)), ilkte = acilisKayit[id];
-    kayitCikar(id); islemEkle('ogun_sil', { id: id });
+    var ilkte = acilisKayit[id], paket = kayitSilBagliyla(id); if (!paket) return;
+    var eski = paket.eski;
     S.olcuAcik = ''; titret(); ciz();
     cubukGeri('Çıkarıldı · ' + eski['Ad'], function () {
-      var yid = kayitGeriEkle(eski, true); if (ilkte && yid) acilisKayit[yid] = 1;
+      var yid = geriEkleBagliyla(paket, true); if (ilkte && yid) acilisKayit[yid] = 1;
       ciz(); listeYenile(eski['Besin ID'], true); duyur(eski['Ad'] + ' geri eklendi');
     });
     listeYenile(eski['Besin ID'], true);
@@ -1282,8 +1309,8 @@
     if (ek) { listedenEkle(S.besinler[ek.getAttribute('data-sec')]); return; }
     var se = e.target.closest && e.target.closest('#sonuclar [data-seker]');
     if (se) {
-      var skk = ogunKaydi(SEKER);
-      if (se.getAttribute('data-seker') === 'ac' && !skk) { kayitEkle(S.besinler[SEKER], '1 küp', 1, penOgun, true); titret(); ciz(); listeYenile(SEKER, true); duyur('Küp şeker eklendi, 1 küp'); }
+      var ic = se.getAttribute('data-icecek'), skk = sekerKaydi(ic);
+      if (se.getAttribute('data-seker') === 'ac' && !skk) { kayitEkle(S.besinler[SEKER], '1 küp', 1, penOgun, true, ic); titret(); ciz(); listeYenile(SEKER, true); duyur('Küp şeker eklendi, 1 küp'); }
       else if (skk) ogundenCikar(skk['ID']);
       return;
     }
@@ -1411,6 +1438,8 @@
   function kayitDuzenle(id) {
     var k = kayitBul(id); if (!k) return;
     var b = S.besinler[k['Besin ID']], D = { miktar: sayi(k['Miktar']) || 1, olcu: k['Ölçü'], ogunK: ogunKodu(k['Öğün']), acik: false };
+    var sekerVar = b && b.sk && S.besinler[SEKER], sk0 = sekerVar ? sekerKaydi(id) : null; // 1.11.2: çay/kahvenin şekeri
+    D.seker = sk0 ? sayi(sk0['Miktar']) || 1 : 0;
     if (b && !b.porsiyon && D.olcu !== 'gram' && !b.olcu.some(function (x) { return x[0] === D.olcu; })) b = null; // ölçü artık yok: orantıyla
     function deg() {
       if (b) return deger(b, D.olcu, D.miktar);
@@ -1424,6 +1453,8 @@
       if (b && !b.porsiyon) h += '<div class="form-alan"><span class="etiket-yazi">Ölçü</span><div class="cipler" role="group" aria-label="Ölçü">' + olcuSecenekleri(b).map(function (o) {
         return '<button class="cip' + (o === D.olcu ? ' secili' : '') + '" aria-pressed="' + (o === D.olcu) + '" data-d-olcu="' + esc(o) + '">' + esc(olcuEtiket(o)) + '</button>';
       }).join('') + '</div></div>';
+      if (sekerVar) h += '<div class="form-alan"><span class="etiket-yazi">Şeker</span><div class="seker-satir seker-duzenle"><button class="cip' + (D.seker ? ' secili' : '') + '" aria-pressed="' + !!D.seker + '" id="d-seker">Şekerli</button>' +
+        (D.seker ? '<span class="seker-ad">(küp şeker)</span>' + adimSatiri('d:seker', 'Küp şeker', D.seker, '1 küp', 0.5) : '') + '</div></div>';
       h += '<div class="form-alan"><span class="etiket-yazi">Öğün</span><div class="cipler" role="group" aria-label="Öğün">' + OGUNLER.map(function (o) {
         return '<button class="cip' + (o.k === D.ogunK ? ' secili' : '') + '" aria-pressed="' + (o.k === D.ogunK) + '" data-d-ogun="' + o.k + '">' + o.ad + '</button>';
       }).join('') + '</div></div>';
@@ -1449,6 +1480,10 @@
         };
       });
       document.querySelectorAll('#pencere [data-d-ogun]').forEach(function (x) { x.onclick = function () { D.ogunK = x.getAttribute('data-d-ogun'); pencereIcerik(icerik(), bagla, true); }; });
+      if ($('#d-seker')) $('#d-seker').onclick = function () { D.seker = D.seker ? 0 : 1; titret(); pencereIcerik(icerik(), bagla, true); };
+      document.querySelectorAll('#pencere [data-art="d:seker"],#pencere [data-az="d:seker"]').forEach(function (x) {
+        x.onclick = function () { D.seker = Math.max(0, Math.round((D.seker + (x.hasAttribute('data-art') ? 0.5 : -0.5)) * 100) / 100); titret(); pencereIcerik(icerik(), bagla, true); };
+      });
       $('#d-sil').onclick = function () { pencereKapat(); kayitMiktar(id, 0); };
       $('#d-kaydet').onclick = function () {
         var eski = { id: id, miktar: k['Miktar'], gram: k['Gram'], kcal: k['kcal'], p: k['Protein'], olcu: k['Ölçü'], ogun: k['Öğün'] };
@@ -1456,11 +1491,20 @@
           p: k['Protein'] === '' || k['Protein'] == null ? '' : yuvarla(d.p), olcu: D.olcu, ogun: ogunAdi(D.ogunK) };
         k['Miktar'] = v.miktar; k['Gram'] = v.gram; k['kcal'] = v.kcal; k['Protein'] = v.p; k['Ölçü'] = v.olcu; k['Öğün'] = v.ogun;
         islemEkle('ogun_guncelle', v);
+        var skEski = sk0 && kayitBul(sk0['ID']) ? JSON.parse(JSON.stringify(kayitBul(sk0['ID']))) : null;
+        if (sekerVar) { // 1.11.2: şeker: ekle / adet değiştir / kaldır (çayla aynı öğünde)
+          var skn = sekerKaydi(id);
+          if (D.seker && !skn) kayitEkle(S.besinler[SEKER], '1 küp', D.seker, D.ogunK, true, id);
+          else if (D.seker && skn && sayi(skn['Miktar']) !== D.seker) kayitMiktar(skn['ID'], D.seker);
+          else if (!D.seker && skn) kayitSilBagliyla(skn['ID']);
+        }
+        if (ogunKodu(eski.ogun) !== D.ogunK) bagliTasi(id, v.ogun);
         S.acikOgun = D.ogunK; S.seciliOgun = D.ogunK;
         pencereKapat(); ciz();
         bildir('✅ ' + k['Ad'] + (ogunKodu(eski.ogun) !== D.ogunK ? ' ' + ogunAdi(D.ogunK).toLocaleLowerCase('tr-TR') + ' öğününe taşındı' : ' güncellendi'), 'Geri al', function () {
           k['Miktar'] = eski.miktar; k['Gram'] = eski.gram; k['kcal'] = eski.kcal; k['Protein'] = eski.p; k['Ölçü'] = eski.olcu; k['Öğün'] = eski.ogun;
           islemEkle('ogun_guncelle', eski);
+          if (sekerVar) { bagliKayitlar(id).forEach(function (c) { kayitCikar(c['ID']); islemEkle('ogun_sil', { id: c['ID'] }); }); if (skEski) kayitGeriEkle(skEski, true, id); }
           S.acikOgun = ogunKodu(eski.ogun); S.seciliOgun = S.acikOgun; ciz();
         });
       };

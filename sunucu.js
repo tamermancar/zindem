@@ -3,13 +3,13 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.10.5';
+var SUNUCU_SURUM = '1.11.2';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
   'Hedefler': ['Başlangıç', 'Tür', 'Değer', 'Not'],
   'Besinlerim': ['ID', 'Ad', 'Kategori', 'Katalog ID', 'Temel', 'kcal', 'Protein', 'Ölçüler', 'Kaynak', 'Not', 'Öğünler'],
-  'Öğün Kayıtları': ['ID', 'Gün', 'Saat', 'Öğün', 'Besin ID', 'Ad', 'Miktar', 'Ölçü', 'Gram', 'kcal', 'Protein', 'Kayıt zamanı', 'Malzemeler'],
+  'Öğün Kayıtları': ['ID', 'Gün', 'Saat', 'Öğün', 'Besin ID', 'Ad', 'Miktar', 'Ölçü', 'Gram', 'kcal', 'Protein', 'Kayıt zamanı', 'Malzemeler', 'Bağlı'], // 1.11.2: Bağlı = ait olduğu kaydın ID'si (çayın şekeri)
   // 1.6: kaydedilen tarifler ("Benim tariflerim"). Porsiyon: tarifin kaç porsiyon çıkardığı.
   'Tarifler': ['ID', 'Ad', 'Porsiyon', 'Öğün', 'Güncelleme'],
   'Tarif Malzemeleri': ['Tarif ID', 'Sıra', 'Besin ID', 'Ad', 'Miktar', 'Ölçü', 'Gram'],
@@ -25,7 +25,7 @@ var SAYFALAR = {
   'Antrenman Günleri': ['Gün', 'Antrenman ID', 'Ad', 'Durum', 'Kısa', 'Yapılan', 'Hedef', 'Not', 'Kayıt zamanı'],
   'Hareketlerim': ['ID', 'Ad', 'Tür', 'Bölge', 'Ekipman', 'Pozisyon', 'Zorlar', 'Uzuv', 'Not']
 };
-var METIN_SUTUNLAR = ['Program ID', 'Antrenman ID', 'Hareket ID', 'Plan', 'Hareketler', 'ID', 'Gün', 'Tarih', 'Başlangıç', 'Açılış', 'Kapanış', 'Saat', 'Kayıt zamanı', 'Not ID', 'Besin ID', 'Katalog ID', 'Uyku', 'Tarif ID', 'Güncelleme', 'Malzemeler'];
+var METIN_SUTUNLAR = ['Program ID', 'Antrenman ID', 'Hareket ID', 'Plan', 'Hareketler', 'ID', 'Gün', 'Tarih', 'Başlangıç', 'Açılış', 'Kapanış', 'Saat', 'Kayıt zamanı', 'Not ID', 'Besin ID', 'Katalog ID', 'Uyku', 'Tarif ID', 'Güncelleme', 'Malzemeler', 'Bağlı'];
 
 /* ---------- Tablo yapısı: eksik sayfa ve sütunları tamamlar (her sürümde bir kez) ---------- */
 function semaGuncelle_() {
@@ -107,7 +107,7 @@ var AYAR_BILGI = {
   kahvalti_acik: ['ogunler', 'Kahvaltı açık mı (evet/hayır)'], ogle_acik: ['ogunler', 'Öğle açık mı'], aksam_acik: ['ogunler', 'Akşam açık mı'], cay_acik: ['ogunler', 'Çay saati açık mı'],
   hizli_ekle_ml: ['su', 'Su hızlı ekleme miktarları (ml, virgülle; ilki 1 bardak)'], duzeltme_ml: ['su', 'Su düzeltme adımı (ml)'],
   agri_dikkat: ['agri', 'Bu şiddetten itibaren: dikkat'], agri_ara: ['agri', 'Bu şiddetten itibaren: bölgeye ara'], agri_doktor: ['agri', 'Bu şiddetten itibaren: doktora danış'],
-  tema: ['gorunum', 'Tema: acik / koyu / telefon'], ipucu_sil: ['ipucu', 'Sola çekip sil ipucu gösterildi'],
+  tema: ['gorunum', 'Tema: acik / koyu / telefon'], geri_al_sn: ['gorunum', 'Geri al süresi (sn): 3 / 5 / 8'], ipucu_sil: ['ipucu', 'Sola çekip sil ipucu gösterildi'],
   ant_tanisma: ['antrenman', 'Antrenman tanışma soruları cevaplandı'], ant_yer: ['antrenman', 'Nerede: ev / salon / ikisi'],
   ant_ekipman: ['antrenman', 'Ekipman (JSON liste)'], ant_hareket: ['antrenman', 'Hareket durumu: ayakta / destekli / oturarak / sandalye'],
   ant_hassas: ['antrenman', 'Dikkat edilecek bölgeler (JSON)'], ant_uzuv: ['antrenman', 'Uzuv durumu (JSON)'], ant_ozet_hafta: ['antrenman', 'Haftanın özeti en son hangi hafta kapatıldı'],
@@ -408,7 +408,7 @@ function oncekiOgun_(ogunler, gun) {
     if (!ad || !g || g >= gun || !x['Besin ID']) continue;
     if (onceki[ad] && onceki[ad].gun > g) continue;
     if (!onceki[ad] || onceki[ad].gun < g) onceki[ad] = { gun: g, kayitlar: [] };
-    onceki[ad].kayitlar.unshift({ besinId: x['Besin ID'], ad: x['Ad'], miktar: x['Miktar'], olcu: x['Ölçü'], kcal: x['kcal'], p: x['Protein'], gram: x['Gram'], malzemeler: x['Malzemeler'] || '' });
+    onceki[ad].kayitlar.unshift({ id: x['ID'], bagli: x['Bağlı'] || '', besinId: x['Besin ID'], ad: x['Ad'], miktar: x['Miktar'], olcu: x['Ölçü'], kcal: x['kcal'], p: x['Protein'], gram: x['Gram'], malzemeler: x['Malzemeler'] || '' });
   }
   return onceki;
 }
@@ -440,7 +440,8 @@ function islemYap_(is) {
         'ID': v.id, 'Gün': v.gun, 'Saat': v.saat, 'Öğün': v.ogun, 'Besin ID': v.besinId, 'Ad': v.ad,
         'Miktar': v.miktar, 'Ölçü': v.olcu, 'Gram': v.gram, 'kcal': v.kcal, 'Protein': v.p,
         'Kayıt zamanı': zaman_(),
-        'Malzemeler': v.malzemeler || ''
+        'Malzemeler': v.malzemeler || '',
+        'Bağlı': v.bagli || ''
       });
       return;
     case 'ogun_guncelle':

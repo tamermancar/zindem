@@ -128,7 +128,10 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 /* 1.11: sayı kutusunun "–" yer tutucusu dokununca kaybolur (silinecek bir şey sanılmasın) */
 input[placeholder="–"]:focus::placeholder, input[placeholder="—"]:focus::placeholder { color: transparent; }
 /* 1.11: çay/kahve "Şekerli" ve küp şeker adedi */
-.seker-satir { display: flex; align-items: center; gap: 10px; padding: 0 0 10px; flex-wrap: wrap; }
+.seker-satir { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 60px; padding: 8px 0; border-bottom: 1px solid var(--cizgi); }
+/* şeker çaya ait: arada düz çizgi yerine kesikli çizgi (ölçü seçenekleri açıksa onların altında) */
+.sofra-kutu .sonuc.sofrada:has(+ .seker-satir), .sofra-kutu .olcu-secim:has(+ .seker-satir) { border-bottom: 1px dashed var(--kenar); }
+.seker-duzenle { border-bottom: 0; padding: 0; min-height: 44px; }
 .seker-satir .seker-ad { flex: 1; min-width: 0; font-size: 12.5px; color: var(--soluk); font-weight: 600; }
 /* Pencere kapanışı */
 .pencere.kapaniyor { animation: asagi .2s ease-in forwards; }
@@ -483,6 +486,9 @@ button.profil:active { transform: scale(.96); }
 .bilgi small.tek, .bilgi-dugme small.tek { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ogun-kart .kaydir { border-top: 1px solid var(--cizgi); }
 .ogun-kart .kaydir > .satir { border-top: 0; }
+/* 1.11.2: çayın şekeri: ana kaydın altında kesikli çizgi, içeriden */
+.ogun-kart .kaydir.bagli { border-top: 1px dashed var(--kenar); }
+.ogun-kart .kaydir.bagli > .satir { padding-left: 30px; }
 /* Zamanı gelmemiş öğün: soluk, eklemek mümkün ama sessiz */
 .ogun-kart.gelecek .ogun-ad, .ogun-kart.gelecek .ogun-ozet, .ogun-kart.gelecek .bos,
 .ogun-kart.gelecek .satir .bilgi b, .ogun-kart.gelecek .satir .bilgi small { color: var(--soluk); }
