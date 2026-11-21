@@ -1,0 +1,39 @@
+/* Paket 2 (1.11) Ekle ekranları taslağı. Sadece görünüm; kodda stil.css'e taşınacak. Bütün renkler stil.css değişkenlerinden. */
+
+/* Altta hep duran öğün çubuğu (eski "sepet çubuğu"nun yerine): öğün · besin sayısı · toplam + Tamam */
+.ogun-cubuk {
+  position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 32; max-width: 536px; margin: 0 auto;
+  background: var(--yumusak); border-radius: 22px; padding: 8px 8px 8px 12px; display: flex; align-items: center; gap: 10px;
+  box-shadow: var(--golge-sepet);
+}
+.oc-simge { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--kart); color: var(--ana); display: flex; align-items: center; justify-content: center; flex: none; }
+.oc-simge .ikon { width: 20px; height: 20px; }
+.oc-simge .sayac { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--ana); color: var(--ana-yazi);
+  font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.oc-yazi { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.oc-yazi small { font-size: 12.5px; color: var(--soluk); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-yazi b { font-size: 15px; color: var(--yazi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ogun-cubuk .ana-dugme { margin: 0; width: auto; min-height: 48px; padding: 0 22px; flex: none; }
+/* Geri al hâli: sol taraf tek düğme olur (5 sn), Tamam yerinde kalır */
+.oc-geri { flex: 1; min-width: 0; min-height: 48px; border: 0; background: transparent; display: flex; align-items: center; gap: 10px; padding: 0; text-align: left; color: var(--yazi); }
+.oc-geri .oc-simge { color: var(--yumusak-yazi); }
+.oc-geri b { color: var(--yumusak-yazi); text-decoration: underline; text-underline-offset: 3px; }
+/* Listenin sonu çubuğun arkasında kalmasın */
+.oc-bosluk { height: 92px; }
+
+/* Öğündeki besin satırı listede: eski "sofrada" görünümü (ad · ölçü ▾ · değer, artı/eksi) */
+.ogunde-baslik { display: flex; justify-content: space-between; align-items: baseline; }
+.ogunde-baslik span { text-transform: none; letter-spacing: 0; font-weight: 700; }
+
+/* Sola çekme: listede "Kaldır", Bugün'de "Sil" (aynı kırmızı zemin, çöp simgesi) */
+.kaydir > .sonuc { position: relative; z-index: 1; background: var(--kart); touch-action: pan-y; }
+.kaydir.taslak-acik > .satir, .kaydir.taslak-acik > .sonuc, .kaydir.taslak-acik > .tm-satir { transform: translateX(-88px); }
+.kaydir > .tm-satir { position: relative; z-index: 1; background: var(--kart); }
+.kaydir.taslak-yari > .satir, .kaydir.taslak-yari > .sonuc { transform: translateX(-62%); }
+.kaydir.taslak-yari .kaydir-sil { width: 62%; }
+/* Çubuğun altında liste görünmesin: arkasında kart renginde solan zemin */
+.ogun-cubuk::before { content: ''; position: absolute; left: -12px; right: -12px; top: -18px; bottom: calc(-14px - env(safe-area-inset-bottom)); z-index: -1; pointer-events: none;
+  background: linear-gradient(transparent, var(--kart) 18px); border-radius: 0; }
+@media (max-width: 380px) { .ogun-cubuk .ana-dugme { padding: 0 18px; } .ogun-cubuk { gap: 8px; } }
+/* Kaldır/Sil düğmesi sadece çekerken görünür (ölçü seçenekleri açıkken arkadan sızmasın) — kodda .kaydir:not(.acik):not(.surukleniyor) */
+.kaydir:not(.taslak-acik):not(.taslak-yari) > .kaydir-sil { visibility: hidden; }

@@ -141,8 +141,6 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 /* 1.10.3: en alta kaydırınca son alan sabit çubuğun solgun geçişinin arkasında kalmasın (Kendi hareketin › Not) */
 #pencere :has(+ .alt-dugme) { margin-bottom: 20px; }
 #pencere :has(+ .alt-sabit), #pencere :has(+ .tarif-alt) { margin-bottom: 28px; }
-.alt-sabit .sepet-toplam { margin-top: 0; font-size: 14px; align-items: baseline; }
-.alt-sabit .sepet-toplam b { font-size: 15px; }
 .alt-sabit .ana-dugme { margin-top: 8px; min-height: 46px; }
 
 /* Başlıklar ve yazılar */
@@ -259,8 +257,12 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 
 /* Sola çekip silme */
 .kaydir { position: relative; overflow: hidden; }
-.kaydir > .satir, .kaydir > .sepet-satir { position: relative; z-index: 1; background: var(--kart); touch-action: pan-y; transition: transform .2s ease; }
-.kaydir.surukleniyor > .satir, .kaydir.surukleniyor > .sepet-satir { transition: none; }
+.kaydir > .satir, .kaydir > .sonuc, .kaydir > .tm-satir { position: relative; z-index: 1; background: var(--kart); touch-action: pan-y; transition: transform .2s ease; }
+.kaydir.surukleniyor > .satir, .kaydir.surukleniyor > .sonuc, .kaydir.surukleniyor > .tm-satir { transition: none; }
+/* 1.11: düğme sadece çekerken/açıkken görünür (ölçü seçenekleri açıkken arkadan sızmasın) */
+.kaydir:not(.acik):not(.surukleniyor) > .kaydir-sil { visibility: hidden; transition: none; }
+.kaydir-sil { transition: width .16s ease; }
+.kaydir.surukleniyor > .kaydir-sil { transition: none; }
 .kaydir-sil { position: absolute; top: 0; right: 0; bottom: 0; width: 88px; border: 0; background: var(--tehlike-zemin); color: var(--tehlike);
   font-weight: 800; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .kaydir-sil .ikon { width: 20px; height: 20px; }
@@ -276,6 +278,12 @@ main { max-width: 520px; margin: 0 auto; padding: 12px 16px; }
 .bildirim button { border: 0; background: transparent; color: var(--zemin); font-weight: 800; text-decoration: underline; min-height: 36px; white-space: nowrap; }
 .bildirim .b-ikon { flex: none; width: 20px; height: 20px; color: var(--ters-yesil); }
 .bildirim .b-ikon.uyar { color: var(--ters-sari); }
+/* 1.11: itip kapatma (sağa/sola/yukarı) ve Geri al balonunda × */
+.bildirim { transform: translate(calc(-50% + var(--bdx, 0px)), var(--bdy, 0px)); touch-action: none; transition: transform .18s ease, opacity .18s ease; user-select: none; -webkit-user-select: none; }
+.bildirim.surukleniyor { transition: none; }
+.bildirim.gidiyor { opacity: 0; }
+.bildirim .b-kapat { flex: none; width: 44px; min-height: 44px; margin: -8px -12px -8px -6px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.bildirim .b-kapat .ikon { width: 18px; height: 18px; }
 
 /* Sürgü standardı (A): balonlu sayı; dolu çizgi, top ve balon kademenin rengi, boş kısım gri */
 .surgu { display: flex; align-items: flex-end; gap: 2px; }
@@ -505,35 +513,39 @@ button.profil:active { transform: scale(.96); }
 .duzelt .adim-deger small { font-size: 11px; margin-left: 1px; }
 .ozet-kutu { background: var(--yumusak); color: var(--yumusak-yazi); border-radius: 16px; padding: 12px 14px; margin-top: 14px; font-weight: 700; text-align: center; }
 
-/* Ekle: sepet çubuğu ve Sofra */
-.sepet-bosluk { height: 90px; }
-.sepet-cubuk {
+/* Ekle (1.11): altta hep duran öğün çubuğu — öğün · besin sayısı · toplam + Tamam; çıkarınca 8 sn "Geri al" */
+.oc-bosluk { height: 92px; }
+.ogun-cubuk {
   position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 32; max-width: 536px; margin: 0 auto;
-  background: var(--yumusak); border-radius: 22px; padding: 8px; display: flex; align-items: center; gap: 10px;
-  box-shadow: var(--golge-sepet); animation: yukari .22s ease-out;
+  background: var(--yumusak); border-radius: 22px; padding: 8px 8px 8px 12px; display: flex; align-items: center; gap: 10px;
+  box-shadow: var(--golge-sepet);
 }
-.sepet-gor { flex: 1; min-width: 0; border: 0; background: transparent; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 48px; color: var(--yazi); }
-.sepet-simge { position: relative; width: 44px; height: 44px; border-radius: 50%; background: var(--kart); color: var(--sari); display: flex; align-items: center; justify-content: center; flex: none; }
-.sepet-simge .sayac { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--ana); color: var(--ana-yazi); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-.sepet-yazi { display: flex; flex-direction: column; min-width: 0; }
-.sepet-yazi b { font-size: 15px; }
-.sepet-yazi small { font-size: 12px; color: var(--soluk); }
-.sepet-satir { border-bottom: 1px solid var(--cizgi); }
-.sepet-satir .satir { border-top: 0; padding-left: 0; }
-.sepet-satir.satir { border-top: 0; border-bottom: 1px solid var(--cizgi); padding-left: 0; padding-right: 0; }
-.sepet-arac { display: flex; align-items: center; gap: 8px; padding: 0 0 10px; }
+/* Çubuğun altında liste görünmesin: arkasında kart renginde solan zemin */
+.ogun-cubuk::before { content: ''; position: absolute; left: -12px; right: -12px; top: -18px; bottom: calc(-14px - env(safe-area-inset-bottom)); z-index: -1; pointer-events: none;
+  background: linear-gradient(transparent, var(--kart) 18px); }
+.oc-simge { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--kart); color: var(--ana); display: flex; align-items: center; justify-content: center; flex: none; }
+.oc-simge .ikon { width: 20px; height: 20px; }
+.oc-simge .sayac { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--ana); color: var(--ana-yazi);
+  font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.oc-yazi { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.oc-yazi small { font-size: 12.5px; color: var(--soluk); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-yazi b { font-size: 15px; color: var(--yazi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ogun-cubuk .ana-dugme { margin: 0; width: auto; min-height: 48px; padding: 0 22px; flex: none; }
+.oc-geri { flex: 1; min-width: 0; min-height: 48px; border: 0; background: transparent; display: flex; align-items: center; gap: 10px; padding: 0; text-align: left; color: var(--yazi); }
+.oc-geri .oc-simge { color: var(--yumusak-yazi); }
+.oc-geri b { color: var(--yumusak-yazi); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 380px) { .ogun-cubuk .ana-dugme { padding: 0 18px; } .ogun-cubuk { gap: 8px; } }
 .olcu-secim { padding: 0 0 12px; align-items: center; }
-.sepet-toplam { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; font-size: 15px; }
-/* Listede sofradaki besin (artı/eksi yerinde) ve ortak Sofra satırı */
+/* Listede öğündeki besin (artı/eksi yerinde) */
 .sonuc.sofrada { gap: 8px; padding: 6px 4px; }
-.sonuc.sofrada .bilgi, .sepet-satir .bilgi { flex: 1; min-width: 0; }
-.sonuc.sofrada .bilgi b, .sepet-satir .bilgi b { display: block; font-size: 15px; font-weight: 700; line-height: 1.2; }
-.sonuc.sofrada .bilgi small, .sepet-satir .bilgi small { display: block; font-size: 12.5px; line-height: 1.25; color: var(--soluk); margin-top: 1px; }
+.sonuc.sofrada .bilgi { flex: 1; min-width: 0; }
+.sonuc.sofrada .bilgi b { display: block; font-size: 15px; font-weight: 700; line-height: 1.2; }
+.sonuc.sofrada .bilgi small { display: block; font-size: 12.5px; line-height: 1.25; color: var(--soluk); margin-top: 1px; }
 .miktar-dugme { display: inline-flex; align-items: center; gap: 2px; min-height: 28px; margin: 0 0 -3px; padding: 0 6px 0 0; border: 0; background: transparent;
   color: var(--ana); font-size: 12.5px; font-weight: 700; text-align: left; }
 .miktar-dugme .ikon { width: 14px; height: 14px; stroke-width: 2.4; }
 .sofra-kutu .olcu-secim { padding: 0 0 10px; border-bottom: 1px solid var(--cizgi); }
-.sofra-kutu .sepet-satir.satir:has(+ .olcu-secim), .sofra-kutu .sonuc.sofrada:has(+ .olcu-secim) { border-bottom: 0; }
+.sofra-kutu .sonuc.sofrada:has(+ .olcu-secim) { border-bottom: 0; }
 
 /* Tarif penceresi */
 .tarif-ikon { width: 16px; height: 16px; color: var(--ana); vertical-align: -2px; margin-right: 5px; }
@@ -690,6 +702,7 @@ button.sonuc.tarif-satir { color: inherit; font: inherit; cursor: pointer; }
 .tema-satir { display: flex; align-items: flex-start; gap: 12px; padding: 10px 2px 8px; border-bottom: 1px solid var(--cizgi); }
 .tema-satir .bilgi { flex: 1; min-width: 0; }
 .tema-satir b { display: block; font-size: 15px; font-weight: 700; line-height: 36px; }
+.tema-satir .bilgi > small { display: block; font-size: 12.5px; color: var(--soluk); margin: -6px 0 6px; }
 /* Öğün satırı: üstte ad + aç/kapa, altta saatler (dar telefonda sıkışmasın) */
 .ogun-ayar { padding: 8px 0 10px; border-bottom: 1px solid var(--cizgi); }
 .oa-ust { display: flex; align-items: center; gap: 12px; min-height: 44px; }
@@ -799,11 +812,11 @@ html[data-tema="koyu"] .ana-dugme.tehlike { color: var(--zemin); }
 /* Klavye açıkken alttaki sabit kutular klavyeyle yükselmez: listenin sonunda durur */
 body.klavye .tarif-alt, body.klavye .alt-sabit, body.klavye .alt-dugme { position: static; }
 body.klavye .tarif-alt::before, body.klavye .alt-sabit::before, body.klavye .alt-dugme::before { display: none; }
-body.klavye .sepet-cubuk { display: none; }
+body.klavye .ogun-cubuk { display: none; }
 body.klavye .alt-menu, body.klavye .alt-perde { display: none; } /* 1.10.3: klavye açıkken alt menü klavyenin arkasında kalır (her ekranda) */
 @media (prefers-reduced-motion: reduce) {
   .pencere:not([hidden]), .perde, .pencere.kapaniyor, .perde.kapaniyor { animation: none; }
-  .kaydir > .satir, .kaydir > .sepet-satir { transition: none; }
+  .kaydir > .satir, .kaydir > .sonuc, .kaydir > .tm-satir, .kaydir-sil { transition: none; }
 }
 
 /* ==========================================================

@@ -79,8 +79,7 @@ async def main():
             await pg.click('#sonuclar .sonuc .bilgi >> nth=0'); await pg.wait_for_timeout(200)
             await pg.click('#sonuclar .sonuc .bilgi >> nth=1'); await kaydet('07-ekle-sofrada')
             await pg.click('#sonuclar [data-olcu-ac] >> nth=0'); await kaydet('08-ekle-olcu')
-            await pg.click('#sepet-gor'); await kaydet('09-sofra')
-            await pg.click('#sepet-kaydet2'); await pg.wait_for_timeout(600); await kaydet('10-kaydedildi-bildirim')
+            await pg.click('#oc-tamam'); await pg.wait_for_timeout(600); await kaydet('09-tamam')  # 1.11: Sofra sayfası yok
         await adim('ekle', ekle); await kapat()
 
         async def tarif():

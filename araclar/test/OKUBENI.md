@@ -20,6 +20,7 @@ Uygulama bu klasörü kullanmaz. Gizli bilgi yok; tablolar bellekte, sahte veriy
   8. Sayfa (JS) hatası
   9. (1.10.3) En alta kaydırınca son alan sabit alt çubuğun arkasında kalıyor
   10. (1.10.3) Klavye açıkken alt menü görünüyor
+  11. (1.11) En alta kaydırınca Ekle listesinin son satırı sabit öğün çubuğunun arkasında kalıyor
 
   Çıktı: `rapor.txt`, her durumun görüntüsü, `kolaj-412.jpg` / `kolaj-360.jpg`. Hata varsa çıkış kodu 1.
   Sonra görüntüler **Evidence Collector** rolünde (agency-agents `testing/testing-evidence-collector.md`) gözle incelenir: kuralın yakalayamadığı görünüm hataları (hizasızlık, üst üste binen yazı, yanlış renk) için. Bu iki adım geçmeden Tamer'e ekran görüntüsü sunulmaz.
@@ -27,3 +28,4 @@ Uygulama bu klasörü kullanmaz. Gizli bilgi yok; tablolar bellekte, sahte veriy
 - `surum1103_test.py <port> <klasör>` (1.10.3, `ORNEK_ANT=1` ile): yarım porsiyon, aşağı çekip kapatma, + düğmesi, klavyede alt menü, fazladan set, kısa ad, kaldığın yerden devam, sw.js önbelleği, İlerleme iskeleti, açılış süresi.
   ⚠ Testler saati sabitler (`clock.set_fixed_time`): Date.now() ve performance.now() akmaz. Süre ölçen kodda bunu hesaba kat (dokunma hızı için `e.timeStamp`).
 - `surum1105_test.py <port>` (1.10.5, `ORNEK_ANT=1` ile; tarayıcısız): Google önbelleği — ikinci okuma önbellekten ve aynı, yazınca ve tablo elle değişince geçersizleşir, İlerleme de önbellekli, Ayarlar › Veri bilgisi önbelleksiz. `sahte.js` CacheService, Drive son değişme zamanı ve gzip'i taklit eder; `ONBELLEK=0` ile önbelleksiz çalışır; `/_onbellek` isabet sayısını verir.
+- `surum111_test.py <port> <klasör>` (1.11, örneksiz sunucuyla; her çalıştırmadan önce yeniden başlat): Ekle ekranları — dokununca hemen öğüne yazma, "Kahvaltıda" bölümü, öğün çubuğu (boşken "Öğle · boş / 0 kcal · 0 g"), ölçü değişimi, art arda +'ların birleşmesi (≤ 2 istek), çubukta Geri al, Tamam, "Dünkü kahvaltıyı ekle" + Geri al, sola çekme (yavaş: Sil/Kaldır düğmesi, hızlı: hemen) Bugün'de, Ekle listesinde ve tarif malzemesinde; balonda × ve itip kapatma, Ayarlar › Geri al balonu (3/5/8 sn). 41 kontrol.

@@ -45,6 +45,13 @@ KURALLAR = r"""() => {
     const ob = onc.getBoundingClientRect().bottom;
     if (ob > ust + 1) out.push(['❌', 'Sabit çubuğun arkasında kalıyor', ad(onc) + ' altı ' + Math.round(ob) + ' > ' + Math.round(ust)]);
   }
+  // (1.11) Sabit (fixed) öğün çubuğu: en alta kaydırınca listenin son satırı çubuğun ve solgun zemininin arkasında kalmamalı
+  const oc = document.querySelector('.ogun-cubuk');
+  if (penAcik && oc && getComputedStyle(oc).display !== 'none' && pen.scrollTop >= pen.scrollHeight - pen.clientHeight - 2) {
+    const ust = oc.getBoundingClientRect().top + (parseFloat(getComputedStyle(oc, '::before').top) || 0);
+    const son = [...pen.querySelectorAll('#sonuclar > *:not(.oc-bosluk)')].filter(x => x.getBoundingClientRect().height > 4).pop();
+    if (son && son.getBoundingClientRect().bottom > ust + 1) out.push(['❌', 'Öğün çubuğunun arkasında kalıyor', ad(son) + ' altı ' + Math.round(son.getBoundingClientRect().bottom) + ' > ' + Math.round(ust)]);
+  }
   const saydam = a => { const c = getComputedStyle(a); return c.backgroundImage === 'none' && /rgba\(.*,\s*0\)|transparent/.test(c.backgroundColor); };
   for (const e of document.querySelectorAll('body *')) {
     if (!gorunur(e) || e.closest('svg, .gizli-yazi')) continue;
@@ -181,7 +188,14 @@ async def bir_ekran(b, W, H):
         await odak_kayiyor_mu('ekle-arama', '#arama')
         await pg.fill('#arama', 'zeytin'); await durum('ekle-arama-sonuc')
         await pg.tap('#sonuclar .sonuc .bilgi >> nth=0'); await durum('ekle-sofrada')
-        await pg.fill('#arama', ''); await bekle(200)
+        await pg.fill('#arama', ''); await pg.evaluate("document.activeElement.blur()"); await bekle(300)
+        await durum('ekle-cubuk')
+        await pg.evaluate("(()=>{const p=document.getElementById('pencere'); p.scrollTop=p.scrollHeight})()"); await durum('ekle-en-alt')
+        await pg.evaluate("document.getElementById('pencere').scrollTop=0"); await bekle(200)
+        for _ in range(10):  # (1.11) − ile sıfıra: çubukta Geri al
+            if 'Çıkarıldı' in (await pg.text_content('.ogun-cubuk') or ''): break
+            await pg.tap('#sonuclar .sofrada [data-az] >> nth=0'); await bekle(120)
+        await durum('ekle-geri-al')
         await pg.tap('.pencere-bas .sekme-ciz >> nth=2'); await durum('ekle-grup')
     await adim('ekle', ekle); await kapat()
 
