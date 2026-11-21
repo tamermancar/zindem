@@ -25,9 +25,22 @@ const ctx = {
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, x) => { props[k] = x; } }) },
   Utilities: { formatDate: (d, tz, f) => { const p = n => String(n).padStart(2, '0'); const s = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); const h = p(d.getHours()) + ':' + p(d.getMinutes()); return f === 'HH:mm' ? h : f.includes('HH') ? s + ' ' + h : s; } }
 };
+// 1.10.5: Google önbelleği (CacheService), Drive'daki son değişme zamanı ve gzip taklidi
+const zlib = require('zlib');
+let degisim = Date.now(); const onbellek = {}; let onbellekIsabet = 0;
+const blob = (b) => ({ getBytes: () => Array.from(b), getDataAsString: () => Buffer.from(b).toString('utf8') });
+ss.getId = () => 'sahte';
+Object.assign(ctx.Utilities, {
+  newBlob: (d) => blob(typeof d === 'string' ? Buffer.from(d, 'utf8') : Buffer.from(d)),
+  gzip: (x) => blob(zlib.gzipSync(Buffer.from(x.getBytes()))), ungzip: (x) => blob(zlib.gunzipSync(Buffer.from(x.getBytes()))),
+  base64Encode: (b) => Buffer.from(b).toString('base64'), base64Decode: (t) => Array.from(Buffer.from(t, 'base64'))
+});
+ctx.CacheService = { getScriptCache: () => ({ get: k => { const v = onbellek[k] ?? null; if (v !== null && k.endsWith('#n')) onbellekIsabet++; return v; },
+  getAll: l => { const o = {}; l.forEach(k => { if (k in onbellek) o[k] = onbellek[k]; }); return o; }, putAll: (o) => Object.assign(onbellek, o), put: (k, v) => { onbellek[k] = v; } }) };
+if (process.env.ONBELLEK === '0') delete ctx.CacheService; // önbelleksiz deneme
 const yedekTarih = [];
 ctx.yedekle = () => { yedekTarih.push(new Date()); };
-ctx.DriveApp = { getFoldersByName: () => { let v = yedekTarih.length > 0; return { hasNext: () => v, next: () => { v = false; let i = 0; const l = yedekTarih.slice(); return { getFiles: () => ({ hasNext: () => i < l.length, next: () => { const d = l[i++]; return { isTrashed: () => false, getDateCreated: () => d }; } }) }; } }; } };
+ctx.DriveApp = { getFileById: () => ({ getLastUpdated: () => new Date(degisim) }), getFoldersByName: () => { let v = yedekTarih.length > 0; return { hasNext: () => v, next: () => { v = false; let i = 0; const l = yedekTarih.slice(); return { getFiles: () => ({ hasNext: () => i < l.length, next: () => { const d = l[i++]; return { isTrashed: () => false, getDateCreated: () => d }; } }) }; } }; } };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(depo, process.env.SUNUCU || 'sunucu.js'), 'utf8'), ctx);
 // Örnek veri
@@ -116,6 +129,8 @@ if (process.env.BOS) { ['Öğün Kayıtları', 'Günlük', 'Hedefler'].forEach(k
 let gecikme = +process.env.GECIKME || 0;
 http.createServer((req, res) => {
   const u = url.parse(req.url, true);
+  if (u.pathname !== '/exec' && u.pathname.startsWith('/_') && u.pathname !== '/_tablo') degisim++; // test uçları tabloyu elle değiştirmiş sayılır
+  if (u.pathname === '/_onbellek') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ isabet: onbellekIsabet, anahtar: Object.keys(onbellek).length })); return; }
   if (u.pathname === '/exec') {
     let govde = '';
     req.on('data', c => govde += c);

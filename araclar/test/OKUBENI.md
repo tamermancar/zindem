@@ -26,3 +26,4 @@ Uygulama bu klasörü kullanmaz. Gizli bilgi yok; tablolar bellekte, sahte veriy
   Yeni bir hata türü bulunursa önce bu betiğe kural olarak eklenir, sonra düzeltilir.
 - `surum1103_test.py <port> <klasör>` (1.10.3, `ORNEK_ANT=1` ile): yarım porsiyon, aşağı çekip kapatma, + düğmesi, klavyede alt menü, fazladan set, kısa ad, kaldığın yerden devam, sw.js önbelleği, İlerleme iskeleti, açılış süresi.
   ⚠ Testler saati sabitler (`clock.set_fixed_time`): Date.now() ve performance.now() akmaz. Süre ölçen kodda bunu hesaba kat (dokunma hızı için `e.timeStamp`).
+- `surum1105_test.py <port>` (1.10.5, `ORNEK_ANT=1` ile; tarayıcısız): Google önbelleği — ikinci okuma önbellekten ve aynı, yazınca ve tablo elle değişince geçersizleşir, İlerleme de önbellekli, Ayarlar › Veri bilgisi önbelleksiz. `sahte.js` CacheService, Drive son değişme zamanı ve gzip'i taklit eder; `ONBELLEK=0` ile önbelleksiz çalışır; `/_onbellek` isabet sayısını verir.

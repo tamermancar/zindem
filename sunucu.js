@@ -3,7 +3,7 @@
  * Bu dosya telefonda ÇALIŞMAZ. Apps Script'teki Kod.gs onu GitHub'dan okuyup E-Tablolar'da çalıştırır.
  * Kodda kişisel bilgi ve anahtar yoktur.
  */
-var SUNUCU_SURUM = '1.10.3';
+var SUNUCU_SURUM = '1.10.5';
 
 var SAYFALAR = {
   'Ayarlar': ['Grup', 'Anahtar', 'Değer', 'Açıklama'],
@@ -166,7 +166,10 @@ function yedekAl_() {
 }
 
 /* ---------- Yardımcılar ---------- */
-function sayfa_(ad) { return SpreadsheetApp.getActive().getSheetByName(ad); }
+function sayfa_(ad) { // 1.10.5: tablo ve sayfa nesneleri istek başına bir kez alınır
+  if (!SS_) SS_ = SpreadsheetApp.getActive();
+  return SAYFA_ONBELLEK_[ad] || (SAYFA_ONBELLEK_[ad] = SS_.getSheetByName(ad));
+}
 var BASLIK_ONBELLEK_ = {};
 function basliklar_(ad) {
   if (BASLIK_ONBELLEK_[ad]) return BASLIK_ONBELLEK_[ad];
@@ -175,10 +178,13 @@ function basliklar_(ad) {
   BASLIK_ONBELLEK_[ad] = b;
   return b;
 }
+var TZ_ = null; // 1.10.5: saat dilimi istek başına bir kez sorulur (eskiden her tarih hücresinde soruluyordu)
+function tz_() { return TZ_ || (TZ_ = SpreadsheetApp.getActive().getSpreadsheetTimeZone()); }
+var SS_ = null, SAYFA_ONBELLEK_ = {};
 function hucre_(v) {
   if (v instanceof Date) {
     // 1.9.1: saat, betiğin değil tablonun saat dilimine göre okunur (elle yapıştırılan tarihler "… 00:00" olmasın)
-    var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+    var tz = tz_();
     var saatli = Utilities.formatDate(v, tz, 'HH:mm') !== '00:00';
     return Utilities.formatDate(v, tz, saatli ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd');
   }
@@ -245,8 +251,48 @@ function tarifMalzemeSil_(id) {
 /* ---------- Okuma ----------
  * p.gun: ekranda açılacak gün · p.bas / p.bitis: bu aralıktaki bütün günler tek seferde gelir (1.3.1)
  * p.sade = '1': sadece gün verileri (eski bir aya geçerken) */
+/* 1.10.5: Okuma sonucu Google'ın kendi önbelleğinde (CacheService, en çok 6 saat) tutulur; telefonda veri tutulmaz.
+   Anahtar: tablonun son değişme zamanı (Drive; elle yapılan değişiklikleri de yakalar) + uygulamadan gelen yazma sayacı
+   (yazma anında artar) + istenen günler + bugünün tarihi + sürüm. Bunlardan biri değişince önbellek kendiliğinden geçersizleşir.
+   Önbellek ya da Drive çalışmazsa tablo eskisi gibi doğrudan okunur. */
+function istekBasi_() { SS_ = null; TZ_ = null; SAYFA_ONBELLEK_ = {}; BASLIK_ONBELLEK_ = {}; } // istekler arası eski nesne kalmasın
 function sunucuOku(p) {
+  var t0 = Date.now();
+  istekBasi_();
   semaGuncelle_();
+  var anahtar = p.bilgi === '1' ? null : onbellekAnahtari_(p), r = anahtar ? onbellekOku_(anahtar) : null, onb = !!r;
+  if (!r) { r = sunucuOkuTablo_(p); if (anahtar && r && r.ok) onbellekYaz_(anahtar, r); }
+  r.sure = { okuma: Date.now() - t0, onbellek: onb };
+  return r;
+}
+function onbellekAnahtari_(p) {
+  try {
+    if (!SS_) SS_ = SpreadsheetApp.getActive();
+    var degisim = DriveApp.getFileById(SS_.getId()).getLastUpdated().getTime();
+    var sayac = PropertiesService.getScriptProperties().getProperty('YAZMA_SAYAC') || '0';
+    return ['oku', SUNUCU_SURUM, degisim, sayac, bugun_(), p.gun || '', p.bas || '', p.bitis || '', p.sade || '', p.ilerleme || ''].join('|');
+  } catch (x) { return null; }
+}
+function onbellekOku_(anahtar) {
+  try {
+    var c = CacheService.getScriptCache(), n = +c.get(anahtar + '#n'); if (!n) return null;
+    var ad = []; for (var i = 0; i < n; i++) ad.push(anahtar + '#' + i);
+    var hepsi = c.getAll(ad), metin = '';
+    for (var j = 0; j < n; j++) { if (hepsi[ad[j]] == null) return null; metin += hepsi[ad[j]]; }
+    return JSON.parse(Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(metin), 'application/x-gzip')).getDataAsString());
+  } catch (x) { return null; }
+}
+function onbellekYaz_(anahtar, r) {
+  try {
+    var metin = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(r), 'application/json')).getBytes());
+    var parca = 90000, n = Math.ceil(metin.length / parca), o = {};
+    if (n > 8) return; // çok büyükse önbelleğe alınmaz
+    for (var i = 0; i < n; i++) o[anahtar + '#' + i] = metin.slice(i * parca, (i + 1) * parca);
+    o[anahtar + '#n'] = String(n);
+    CacheService.getScriptCache().putAll(o, 21600);
+  } catch (x) { /* önbellek olmadan da çalışır */ }
+}
+function sunucuOkuTablo_(p) {
   if (p.ilerleme === '1') return ilerlemeOku_(); // 1.10: İlerleme ekranı
   if (p.bilgi === '1') { var y = yedekler_(); return { ok: true, surum: SUNUCU_SURUM, sayilar: sayilar_(), yedekler: y, sonYedek: y[0] || '' }; } // 1.7: Ayarlar › Veri
   var gun = p.gun || '', bas = p.bas || gun, bitis = p.bitis || gun;
@@ -342,7 +388,7 @@ function satirlariSil_(ad, sutun, deger) {
   var v = sh.getRange(2, col, sh.getLastRow() - 1, 1).getValues();
   for (var i = v.length - 1; i >= 0; i--) if (String(hucre_(v[i][0])) === String(deger)) sh.deleteRow(i + 2);
 }
-function zaman_() { return Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm'); }
+function zaman_() { return Utilities.formatDate(new Date(), tz_(), 'yyyy-MM-dd HH:mm'); }
 /* Her öğün için, verilen günden önceki son kayıtlı gün ("Dünkü kahvaltıyı ekle") */
 function tarifleriOku_() {
   var malz = {};
@@ -366,7 +412,7 @@ function oncekiOgun_(ogunler, gun) {
   }
   return onceki;
 }
-function bugun_() { return Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd'); }
+function bugun_() { return Utilities.formatDate(new Date(), tz_(), 'yyyy-MM-dd'); }
 function gunEkle_(gun, n) {
   var p = String(gun).split('-'), d = new Date(+p[0], +p[1] - 1, +p[2] + n);
   return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
@@ -374,7 +420,10 @@ function gunEkle_(gun, n) {
 
 /* ---------- Yazma ---------- */
 function sunucuYaz(islemler) {
+  istekBasi_();
   semaGuncelle_();
+  // 1.10.5: her yazmada sayaç artar → okuma önbelleği hemen geçersizleşir
+  try { var pr = PropertiesService.getScriptProperties(); pr.setProperty('YAZMA_SAYAC', String((+pr.getProperty('YAZMA_SAYAC') || 0) + 1)); } catch (x) { /* yok say */ }
   var sonuc = [];
   islemler.forEach(function (is) {
     try { islemYap_(is); sonuc.push({ id: is.islemId, ok: true }); }
@@ -390,7 +439,7 @@ function islemYap_(is) {
       satirEkle_('Öğün Kayıtları', {
         'ID': v.id, 'Gün': v.gun, 'Saat': v.saat, 'Öğün': v.ogun, 'Besin ID': v.besinId, 'Ad': v.ad,
         'Miktar': v.miktar, 'Ölçü': v.olcu, 'Gram': v.gram, 'kcal': v.kcal, 'Protein': v.p,
-        'Kayıt zamanı': Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm'),
+        'Kayıt zamanı': zaman_(),
         'Malzemeler': v.malzemeler || ''
       });
       return;
@@ -433,7 +482,7 @@ function islemYap_(is) {
       var rs = satirBul_('Besinlerim', 'ID', v.id); if (rs) sayfa_('Besinlerim').deleteRow(rs);
       return;
     case 'tarif_kaydet': // varsa günceller: malzeme satırları silinip yeniden yazılır
-      var zaman = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm');
+      var zaman = zaman_();
       var rt = satirBul_('Tarifler', 'ID', v.id);
       if (rt) { hucreYaz_('Tarifler', rt, 'Ad', v.ad); hucreYaz_('Tarifler', rt, 'Porsiyon', v.porsiyon); hucreYaz_('Tarifler', rt, 'Öğün', v.ogun); hucreYaz_('Tarifler', rt, 'Güncelleme', zaman); }
       else satirEkle_('Tarifler', { 'ID': v.id, 'Ad': v.ad, 'Porsiyon': v.porsiyon, 'Öğün': v.ogun, 'Güncelleme': zaman });

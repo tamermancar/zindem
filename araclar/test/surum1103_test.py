@@ -121,7 +121,7 @@ async def main():
         gelen = {}
         pg.on('response', lambda r: gelen.__setitem__(r.url.split('/')[-1], r.from_service_worker))
         await pg.reload(); await pg.wait_for_selector('.m-ust, .ozet-kart'); await bekle(1500)
-        kontrol('Stil ve kod telefondan geldi', gelen.get('stil.css?v=31') and gelen.get('uygulama.js?v=28'), {k: v for k, v in gelen.items() if '?v=' in k})
+        kontrol('Stil ve kod telefondan geldi', any(v for k, v in gelen.items() if k.startswith('stil.css?v=')) and any(v for k, v in gelen.items() if k.startswith('uygulama.js?v=')), {k: v for k, v in gelen.items() if '?v=' in k})
         kontrol('Veri isteği telefondan gelmedi', not any(v for k, v in gelen.items() if 'gun=' in k), [k for k, v in gelen.items() if v])
 
         # 9) İlerleme iskeleti ve açılış ölçümü

@@ -17,8 +17,8 @@
   var BEKLEYEN_ANAHTARI = 'zindem-bekleyen';
   var ADRES = window.ZINDEM_ADRES;
   // Apps Script'teki Kod.gs, tablo kodunu bu dosyadan okur (Ev Bütçesi düzeni). Sürüm, sunucu.js içindekiyle aynı olmalı.
-  var SUNUCU_SURUM = '1.10.3';
-  var SURUM = '1.10.4';
+  var SUNUCU_SURUM = '1.10.5';
+  var SURUM = '1.10.5';
   var SUNUCU_ADRES = location.origin + location.pathname.replace(/[^/]*$/, '') + 'sunucu.js';
 
   var S = {
@@ -337,7 +337,7 @@
     var istenen = S.gun, bas = gunKaydir(S.bugun, -(ARALIK_GUN - 1)), basladi = Date.now(), basP = window.performance ? performance.now() : 0;
     if (istenen < bas) bas = istenen.slice(0, 8) + '01';
     return Promise.all([
-      fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }).then(function (j) { if (S.olcum && S.olcum.sunucu == null) S.olcum.sunucu = performance.now() - basP; return j; }),
+      fetch(istekAdresi({ gun: istenen, bas: bas, bitis: S.bugun })).then(function (r) { return r.json(); }).then(function (j) { if (S.olcum && S.olcum.sunucu == null) { S.olcum.sunucu = performance.now() - basP; S.olcum.tablo = j && j.sure; } return j; }),
       S.katalog.besinler.length ? Promise.resolve(S.katalog) : fetch('katalog.json?v=7').then(function (r) { return r.json(); })
     ]).then(function (sonuc) {
       var c = sonuc[0];
@@ -2412,7 +2412,8 @@
     var o = S.olcum; if (!o || o.toplam == null) return '';
     var sn = function (ms) { return bicim(ms / 1000, 1) + ' sn'; };
     return '<div class="bolum-baslik">Son açılış</div><div class="menu-satir pasif"><span class="m-ikon" aria-hidden="true">' + ik('clock') + '</span><span class="bilgi"><b>Toplam ' + sn(o.toplam) + '</b>' +
-      '<small>Dosyalar ' + sn(o.dosya) + (o.telefondan ? ' (telefondan)' : '') + ' · sunucu ' + (o.sunucu == null ? '—' : sn(o.sunucu)) + '</small></span></div>';
+      '<small>Dosyalar ' + sn(o.dosya) + (o.telefondan ? ' (telefondan)' : '') + ' · sunucu ' + (o.sunucu == null ? '—' : sn(o.sunucu)) + '</small>' +
+      (o.tablo ? '<small>Bunun ' + sn(o.tablo.okuma) + '\'si tablo okuma' + (o.tablo.onbellek ? ' (önbellekten)' : '') + '</small>' : '') + '</span></div>';
   }
   function veriAc() {
     var secili = {};
